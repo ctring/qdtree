@@ -8,6 +8,13 @@ Operator = Literal["<", ">", "<=", ">="]
 
 
 class Cut:
+    """A cut is a predicate on a single attribute.
+
+    A cut is a predicate on a single attribute. It is used to split a range
+    into two sub-ranges. The cut is defined by an attribute, an operator, and
+    a value. Internally, the value is stored as an index into the dictionary.
+    """
+
     __slots__ = ["_dict", "_attr1", "_op", "_attr2"]
 
     _op: Operator
@@ -19,6 +26,14 @@ class Cut:
         op: Operator,
         attr2: int,
     ):
+        """Create a new cut.
+
+        Args:
+            dict: The dictionary to use for this cut.
+            attr1: The attribute to compare.
+            op: The operator to use.
+            attr2: The attribute to compare against.
+        """
         self._dict = dict
         self._attr1 = attr1
         self._op = op
@@ -43,6 +58,14 @@ class Cut:
         return self._dict[self._attr2]
 
     def evaluate(self, row: Dict[str, SchemaType]) -> bool:
+        """Evaluate the cut on a row.
+
+        Args:
+            row: The row to evaluate the cut on.
+
+        Returns:
+            True if the cut evaluates to true, False otherwise.
+        """
         row_value = row[self._attr1]
 
         if type(row_value) != type(self.attr2):
@@ -60,9 +83,24 @@ class Cut:
         elif self._op == ">=":
             return row_value >= self.attr2  # type: ignore
         else:
-            raise ValueError(f"Invalid operator {self._op}")
+            assert False, f"Invalid operator {self._op}"
 
     def cut_range(self, range: Range) -> Optional[Tuple["Range", "Range"]]:
+        """Cut a range.
+
+        Args:
+            range: The range to cut.
+
+        Returns:
+            A tuple of two ranges. The first range is the range when the cut
+            is evaluated to true, the second range is the range when the cut
+            is evaluated to false. If the cut cannot be applied to the range,
+            None is returned.
+
+        Raises:
+            ValueError: If the dictionary of the range does not match the
+                dictionary of the cut.
+        """
         if range._dict != self._dict:
             raise ValueError(f"Dictionary mismatch")
 
@@ -126,6 +164,13 @@ class Cut:
 
 
 class CutRepository:
+    """A repository of cuts.
+
+    A cut repository is a collection of cuts. The repository is immutable and
+    is built using a builder. The builder collects all the cuts and then constructs
+    a dictionary out of the cuts before creating the repository.
+    """
+
     __slots__ = ["_schema", "_dict", "_cuts"]
 
     def __init__(
@@ -138,8 +183,13 @@ class CutRepository:
         self._dict = dict
         self._cuts = cuts
 
-    def __getitem__(self, key: Tuple[str, Operator, str]) -> Cut:
-        return self._cuts[key]
+    def get(
+        self,
+        attr1: str,
+        op: Operator,
+        attr2: str,
+    ) -> Cut:
+        return self._cuts[(attr1, op, attr2)]
 
     @property
     def schema(self) -> Schema:
@@ -166,6 +216,17 @@ class CutRepository:
             op: Operator,
             attr2: str,
         ):
+            """
+            Add a cut to the repository.
+
+            Args:
+                attr1: The first attribute.
+                op: The operator.
+                attr2: The second attribute.
+
+            Raises:
+                ValueError: If the attribute is not in the schema.
+            """
             if attr1 not in self._schema:
                 raise ValueError(f"Invalid attribute {attr1}")
 
@@ -173,6 +234,11 @@ class CutRepository:
             self._values.add((attr2, self._schema[attr1]))
 
         def build(self) -> "CutRepository":
+            """Build the cut repository.
+
+            Returns:
+                The cut repository.
+            """
             dict = Dictionary(self._values)
             cuts = {
                 (attr1, op, attr2): Cut(dict, attr1, op, dict.reverse_lookup_str(attr2))

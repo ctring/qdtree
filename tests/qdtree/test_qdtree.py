@@ -22,14 +22,14 @@ def test_qdtree():
     }
 
     qdtree = QdTree(ranges)
-    assert qdtree.root.cut(repo[("x", "<", "0.5")]) == True
+    assert qdtree.root.cut(repo.get("x", "<", "0.5")) == True
     assert qdtree.root.left is not None
-    assert qdtree.root.left.cut(repo[("y", ">=", "10")]) == True
+    assert qdtree.root.left.cut(repo.get("y", ">=", "10")) == True
     assert qdtree.root.right is not None
-    assert qdtree.root.right.cut(repo[("y", "<=", "50")]) == True
+    assert qdtree.root.right.cut(repo.get("y", "<=", "50")) == True
     assert qdtree.root.left.right is not None
-    assert qdtree.root.left.right.cut(repo[("x", ">", "40")]) == False
-    assert qdtree.root.left.right.cut(repo[("y", ">", "8")]) == True
+    assert qdtree.root.left.right.cut(repo.get("x", ">", "40")) == False
+    assert qdtree.root.left.right.cut(repo.get("y", ">", "8")) == True
 
     assert qdtree.route_tuple({"x": 0.2, "y": 10}) == 4
     assert qdtree.route_tuple({"x": 0.2, "y": 9}) == 10

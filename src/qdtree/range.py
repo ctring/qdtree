@@ -1,5 +1,3 @@
-import numpy as np
-
 from typing import Optional
 
 from .dictionary import Dictionary
@@ -7,6 +5,12 @@ from .schema import SchemaType
 
 
 class Range:
+    """A range of attribute values.
+
+    A range can be open or closed on either side. The values are dictionary
+    encoded based on the values in a cut repository.
+    """
+
     __slots__ = ["_dict", "_left", "_right", "_open_left", "_open_right"]
 
     _left: int
