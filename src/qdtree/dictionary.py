@@ -1,6 +1,6 @@
 from typing import Dict, List, Tuple, Iterable
 
-from .schema import SchemaType, SchemaTypeTag, cast_to_type
+from qdtree.schema import SchemaType, SchemaTypeTag, cast_to_type
 
 
 class Dictionary:

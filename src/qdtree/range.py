@@ -1,7 +1,7 @@
 from typing import Optional
 
-from .dictionary import Dictionary
-from .schema import SchemaType
+from qdtree.dictionary import Dictionary
+from qdtree.schema import SchemaType
 
 
 class Range:

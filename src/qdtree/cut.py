@@ -1,8 +1,8 @@
 from typing import Dict, List, Literal, Optional, Set, Tuple
 
-from .dictionary import Dictionary
-from .schema import Schema, SchemaType, SchemaTypeTag
-from .range import Range
+from qdtree.dictionary import Dictionary
+from qdtree.schema import Schema, SchemaType, SchemaTypeTag
+from qdtree.range import Range
 
 Operator = Literal["<", ">", "<=", ">="]
 
