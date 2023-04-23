@@ -34,6 +34,18 @@ class Cut:
     def attr2(self) -> float:
         return self._attr2
 
+    def evaluate(self, row: Dict[str, float]) -> bool:
+        if self._op == "<":
+            return row[self._attr1] < self._attr2
+        elif self._op == ">":
+            return row[self._attr1] > self._attr2
+        elif self._op == "<=":
+            return row[self._attr1] <= self._attr2
+        elif self._op == ">=":
+            return row[self._attr1] >= self._attr2
+        else:
+            raise ValueError(f"Invalid operator {self._op}")
+
 
 class Range:
     __slots__ = ["_left", "_right", "_open_left", "_open_right"]
@@ -118,12 +130,13 @@ class Range:
 
 
 class QdTreeNode:
-    __slots__ = ["_cut", "_ranges", "_left", "_right"]
+    __slots__ = ["_id", "_cut", "_ranges", "_left", "_right"]
 
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
 
-    def __init__(self, ranges: Dict[str, Range], cut: Optional[Cut] = None):
+    def __init__(self, id: int, ranges: Dict[str, Range], cut: Optional[Cut] = None):
+        self._id = id
         self._cut = cut
         self._ranges = ranges
         self._left = None
@@ -137,11 +150,16 @@ class QdTreeNode:
 
     def __dict__(self):
         return {
+            "id": self._id,
             "cut": self._cut,
             "ranges": self._ranges,
             "left": self._left.__dict__() if self._left is not None else None,
             "right": self._right.__dict__() if self._right is not None else None,
         }
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     def left(self) -> Optional["QdTreeNode"]:
@@ -162,10 +180,25 @@ class QdTreeNode:
             return False
 
         true_range, false_range = new_ranges
-        self._left = QdTreeNode({**self._ranges, cut.attr1: true_range})
-        self._right = QdTreeNode({**self._ranges, cut.attr1: false_range})
+        self._left = QdTreeNode(self.id * 2, {**self._ranges, cut.attr1: true_range})
+        self._right = QdTreeNode(
+            self.id * 2 + 1, {**self._ranges, cut.attr1: false_range}
+        )
         self._cut = cut
         return True
+
+    def route_tuple(self, row: Dict[str, float]) -> int:
+        if self._cut is None:
+            return self._id
+
+        if self._cut.attr1 not in row:
+            raise RuntimeError(f"Attribute {self._cut.attr1} not in row")
+
+        assert self._left is not None and self._right is not None
+        if self._cut.evaluate(row):
+            return self._left.route_tuple(row)
+        else:
+            return self._right.route_tuple(row)
 
 
 class QdTree:
@@ -174,7 +207,7 @@ class QdTree:
     _root: QdTreeNode
 
     def __init__(self, ranges: Dict[str, Range]):
-        self._root = QdTreeNode(ranges)
+        self._root = QdTreeNode(1, ranges)
 
     def __str__(self):
         return str(self._root)
@@ -185,6 +218,9 @@ class QdTree:
     @property
     def root(self) -> QdTreeNode:
         return self._root
+
+    def route_tuple(self, row: Dict[str, float]) -> int:
+        return self._root.route_tuple(row)
 
 
 if __name__ == "__main__":
@@ -201,5 +237,9 @@ if __name__ == "__main__":
     assert qdtree.root.left.right is not None
     assert qdtree.root.left.right.add_cut(Cut("x", ">", 50)) == False
     assert qdtree.root.left.right.add_cut(Cut("y", ">", 8)) == True
+
+    assert qdtree.route_tuple({"x": 0.2, "y": 10.1}) == 4
+    assert qdtree.route_tuple({"x": 0.2, "y": 9.9}) == 10
+    assert qdtree.route_tuple({"x": 0.8, "y": 10.1}) == 6
 
     print(qdtree)
