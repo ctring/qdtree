@@ -1,4 +1,6 @@
-from typing import Optional
+import numpy as np
+
+from typing import List, Optional, Tuple
 
 from qdtree.dictionary import Dictionary
 from qdtree.schema import SchemaType
@@ -45,3 +47,16 @@ class Range:
     @property
     def right(self) -> SchemaType:
         return self._dict[self._right]
+
+    def encode(self) -> np.ndarray:
+        return np.array(
+            [self._left, self._right, int(self._open_left), int(self._open_right)]
+        )
+
+    def encode_space(self) -> Tuple[np.ndarray, np.ndarray]:
+        dict_min_index = self._dict.min_index()
+        dict_max_index = self._dict.max_index()
+        return (
+            np.array([dict_min_index, dict_min_index, 0, 0]),
+            np.array([dict_max_index, dict_max_index, 1, 1]),
+        )

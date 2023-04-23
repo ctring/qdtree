@@ -1,22 +1,25 @@
 import pprint
+import numpy as np
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
-from qdtree.cut import Cut
+from qdtree.cut import Cut, CutRepository
 from qdtree.range import Range
 from qdtree.schema import SchemaType
 
 
 class QdTreeNode:
-    __slots__ = ["_id", "_cut", "_ranges", "_left", "_right"]
+    __slots__ = ["_id", "_ranges", "_attributes", "_cut", "_left", "_right"]
 
+    _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
 
-    def __init__(self, id: int, ranges: Dict[str, Range], cut: Optional[Cut] = None):
+    def __init__(self, id: int, ranges: Dict[str, Range], attributes: List[str]):
         self._id = id
-        self._cut = cut
         self._ranges = ranges
+        self._attributes = attributes
+        self._cut = None
         self._left = None
         self._right = None
 
@@ -47,6 +50,20 @@ class QdTreeNode:
     def right(self) -> Optional["QdTreeNode"]:
         return self._right
 
+    def encode(self) -> np.ndarray:
+        return np.concatenate(
+            [self._ranges[attr].encode() for attr in self._attributes]
+        )
+
+    def encode_space(self) -> Tuple[np.ndarray, np.ndarray]:
+        node_low = []
+        node_high = []
+        for attr in self._attributes:
+            low, high = self._ranges[attr].encode_space()
+            node_low.append(low)
+            node_high.append(high)
+        return np.concatenate(node_low), np.concatenate(node_high)
+
     def cut(self, cut: Cut) -> bool:
         """Cut the tree at this node.
 
@@ -62,9 +79,11 @@ class QdTreeNode:
             return False
 
         true_range, false_range = new_ranges
-        self._left = QdTreeNode(self.id * 2, {**self._ranges, cut.attr1: true_range})
+        self._left = QdTreeNode(
+            self.id * 2, {**self._ranges, cut.attr1: true_range}, self._attributes
+        )
         self._right = QdTreeNode(
-            self.id * 2 + 1, {**self._ranges, cut.attr1: false_range}
+            self.id * 2 + 1, {**self._ranges, cut.attr1: false_range}, self._attributes
         )
         self._cut = cut
         return True
@@ -92,8 +111,10 @@ class QdTree:
 
     _root: QdTreeNode
 
-    def __init__(self, ranges: Dict[str, Range]):
-        self._root = QdTreeNode(1, ranges)
+    def __init__(self, repo: CutRepository):
+        ranges = {attr: Range(repo.dict) for attr in repo.schema}
+        attributes = list(repo.schema.keys())
+        self._root = QdTreeNode(1, ranges, attributes)
 
     def __str__(self):
         return str(self._root)
@@ -116,7 +137,6 @@ class QdTree:
 # Example
 if __name__ == "__main__":
     from qdtree.schema import Schema
-    from qdtree.cut import CutRepository
 
     schema: Schema = {
         "x": "float",
@@ -132,12 +152,7 @@ if __name__ == "__main__":
 
     repo = builder.build()
 
-    ranges = {
-        "x": Range(repo.dict),
-        "y": Range(repo.dict),
-    }
-
-    qdtree = QdTree(ranges)
+    qdtree = QdTree(repo)
 
     assert qdtree.root.cut(repo.get("x", "<", "0.5")) == True
     assert qdtree.root.left is not None

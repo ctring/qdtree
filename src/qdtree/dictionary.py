@@ -27,3 +27,9 @@ class Dictionary:
 
     def reverse_lookup_str(self, value: str) -> int:
         return self._values_str[value]
+
+    def min_index(self) -> int:
+        return min(Dictionary.INF, Dictionary.NINF, 0)
+
+    def max_index(self) -> int:
+        return max(Dictionary.INF, Dictionary.NINF, len(self._values) - 1)

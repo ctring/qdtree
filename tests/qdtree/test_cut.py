@@ -22,6 +22,8 @@ def repo():
 
 
 def test_cut_repository(repo):
+    assert len(repo) == 8
+
     assert str(repo.get("count", ">", "10")) == "count > 10"
     assert str(repo.get("count", "<", "20")) == "count < 20"
     assert str(repo.get("count", ">=", "30")) == "count >= 30"

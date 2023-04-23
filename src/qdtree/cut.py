@@ -171,17 +171,26 @@ class CutRepository:
     a dictionary out of the cuts before creating the repository.
     """
 
-    __slots__ = ["_schema", "_dict", "_cuts"]
+    __slots__ = ["_schema", "_dict", "_cuts", "_cut_index"]
+
+    _cuts: List[Cut]
 
     def __init__(
         self,
         schema: Schema,
         dict: Dictionary,
-        cuts: Dict[Tuple[str, Operator, str], Cut],
+        cut_index: Dict[Tuple[str, Operator, str], Cut],
     ):
         self._schema = schema
         self._dict = dict
-        self._cuts = cuts
+        self._cut_index = cut_index
+        self._cuts = list(cut_index.values())
+
+    def __len__(self) -> int:
+        return len(self._cuts)
+
+    def __getitem__(self, index: int) -> Cut:
+        return self._cuts[index]
 
     def get(
         self,
@@ -189,7 +198,7 @@ class CutRepository:
         op: Operator,
         attr2: str,
     ) -> Cut:
-        return self._cuts[(attr1, op, attr2)]
+        return self._cut_index[(attr1, op, attr2)]
 
     @property
     def schema(self) -> Schema:
@@ -240,8 +249,8 @@ class CutRepository:
                 The cut repository.
             """
             dict = Dictionary(self._values)
-            cuts = {
+            cut_index = {
                 (attr1, op, attr2): Cut(dict, attr1, op, dict.reverse_lookup_str(attr2))
                 for attr1, op, attr2 in self._cuts
             }
-            return CutRepository(self._schema, dict, cuts)
+            return CutRepository(self._schema, dict, cut_index)

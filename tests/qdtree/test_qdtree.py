@@ -16,12 +16,7 @@ def test_qdtree():
 
     repo = builder.build()
 
-    ranges = {
-        "x": Range(repo.dict),
-        "y": Range(repo.dict),
-    }
-
-    qdtree = QdTree(ranges)
+    qdtree = QdTree(repo)
     assert qdtree.root.cut(repo.get("x", "<", "0.5")) == True
     assert qdtree.root.left is not None
     assert qdtree.root.left.cut(repo.get("y", ">=", "10")) == True
