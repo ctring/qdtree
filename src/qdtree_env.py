@@ -16,28 +16,31 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
     cut_repo: CutRepository
     data: pd.DataFrame
     min_leaf_size: int
-    qd_tree: QdTree
 
-    cur_node: Optional[QdTreeNode]
+    qd_tree: QdTree
+    cur_node: QdTreeNode
     queue: Deque[QdTreeNode]
 
     def __init__(self, config: EnvContext):
+        # Extract the configuration.
         self.cut_repo = config["cut_repo"]
         self.data = config["data"]
         self.min_leaf_size = config["min_leaf_size"]
         self.qd_tree = QdTree(self.cut_repo, self.data, self.min_leaf_size)
 
+        # Set up the action and observation spaces.
         self.action_space = Discrete(len(self.cut_repo))
-
-        low, high = self.qd_tree.root.encode_space()
+        low, high = self.qd_tree.root.encoding_space()
         self.observation_space = Box(low=low, high=high, dtype=np.int32)
 
         self.reset()
 
     def reset(self, *, seed=None, options=None):
-        self.queue = deque()
+        super().reset(seed=seed)
+
         self.qd_tree = QdTree(self.cut_repo, self.data, self.min_leaf_size)
         self.cur_node = self.qd_tree.root
+        self.queue = deque()
 
         return self.cur_node.encode(), {}
 
@@ -46,10 +49,10 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
 
         cut = self.cut_repo[action]
 
+        # Make a cut and add the new nodes to the queue for later visits.
         if self.cur_node.cut(cut):
             assert self.cur_node.left is not None
             self.queue.append(self.cur_node.left)
-
             assert self.cur_node.right is not None
             self.queue.append(self.cur_node.right)
 
@@ -58,16 +61,13 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
             self.cur_node = self.queue.popleft()
             done = False
 
-        return (
-            self.cur_node.encode() if self.cur_node is not None else None,
-            0,  # reward
-            done,
-            False,  # truncated
-            {},
-        )
+        obs = self.cur_node.encode()
+        reward = 0
 
-    def print_tree(self):
-        print(self.qd_tree)
+        return (obs, reward, done, False, {})
+
+    def render(self):
+        return str(self.qd_tree)
 
 
 if __name__ == "__main__":
@@ -104,10 +104,10 @@ if __name__ == "__main__":
     env = QdTreeEnv(config)
 
     init, _ = env.reset()
-    env.print_tree()
+    print(env.render())
 
     env.step(0)
-    env.print_tree()
+    print(env.render())
 
     env.step(1)
-    env.print_tree()
+    print(env.render())

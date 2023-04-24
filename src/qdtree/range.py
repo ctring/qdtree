@@ -53,7 +53,7 @@ class Range:
             [self._left, self._right, int(self._open_left), int(self._open_right)]
         )
 
-    def encode_space(self) -> Tuple[np.ndarray, np.ndarray]:
+    def encoding_space(self) -> Tuple[np.ndarray, np.ndarray]:
         dict_min_index = self._dict.min_index()
         dict_max_index = self._dict.max_index()
         return (

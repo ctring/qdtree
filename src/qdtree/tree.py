@@ -71,11 +71,11 @@ class QdTreeNode:
             [self._ranges[attr].encode() for attr in self._context.attributes]
         )
 
-    def encode_space(self) -> Tuple[np.ndarray, np.ndarray]:
+    def encoding_space(self) -> Tuple[np.ndarray, np.ndarray]:
         node_low = []
         node_high = []
         for attr in self._context.attributes:
-            low, high = self._ranges[attr].encode_space()
+            low, high = self._ranges[attr].encoding_space()
             node_low.append(low)
             node_high.append(high)
         return np.concatenate(node_low), np.concatenate(node_high)
