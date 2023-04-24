@@ -1,5 +1,6 @@
 import gymnasium as gym
 import numpy as np
+import pandas as pd
 
 from collections import deque
 from typing import Deque, Optional
@@ -13,13 +14,18 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
     """Environment for building a qd-tree."""
 
     cut_repo: CutRepository
+    data: pd.DataFrame
+    min_leaf_size: int
     qd_tree: QdTree
+
     cur_node: Optional[QdTreeNode]
     queue: Deque[QdTreeNode]
 
     def __init__(self, config: EnvContext):
         self.cut_repo = config["cut_repo"]
-        self.qd_tree = QdTree(self.cut_repo)
+        self.data = config["data"]
+        self.min_leaf_size = config["min_leaf_size"]
+        self.qd_tree = QdTree(self.cut_repo, self.data, self.min_leaf_size)
 
         self.action_space = Discrete(len(self.cut_repo))
 
@@ -30,7 +36,7 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
 
     def reset(self, *, seed=None, options=None):
         self.queue = deque()
-        self.qd_tree = QdTree(self.cut_repo)
+        self.qd_tree = QdTree(self.cut_repo, self.data, self.min_leaf_size)
         self.cur_node = self.qd_tree.root
 
         return self.cur_node.encode(), {}
@@ -48,7 +54,6 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
             self.queue.append(self.cur_node.right)
 
         done = True
-        self.cur_node = None
         if len(self.queue) > 0:
             self.cur_node = self.queue.popleft()
             done = False
@@ -80,7 +85,21 @@ if __name__ == "__main__":
 
     repo = builder.build()
 
-    config = EnvContext({"cut_repo": repo}, 0)
+    config = EnvContext(
+        {
+            "cut_repo": repo,
+            "data": pd.DataFrame(
+                [
+                    {"x": 0.2, "y": 10},
+                    {"x": 0.4, "y": 20},
+                    {"x": 0.6, "y": 30},
+                    {"x": 0.8, "y": 40},
+                ]
+            ),
+            "min_leaf_size": 2,
+        },
+        0,
+    )
 
     env = QdTreeEnv(config)
 

@@ -1,24 +1,36 @@
 import pprint
 import numpy as np
+import pandas as pd
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 from qdtree.cut import Cut, CutRepository
 from qdtree.range import Range
-from qdtree.schema import SchemaType
+
+
+class QdTreeContext(NamedTuple):
+    attributes: List[str]
+    min_leaf_size: int
 
 
 class QdTreeNode:
-    __slots__ = ["_id", "_ranges", "_attributes", "_cut", "_left", "_right"]
+    __slots__ = ["_context", "_id", "_ranges", "_data", "_cut", "_left", "_right"]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
 
-    def __init__(self, id: int, ranges: Dict[str, Range], attributes: List[str]):
+    def __init__(
+        self,
+        context: QdTreeContext,
+        id: int,
+        ranges: Dict[str, Range],
+        data: pd.DataFrame,
+    ):
+        self._context = context
         self._id = id
         self._ranges = ranges
-        self._attributes = attributes
+        self._data = data
         self._cut = None
         self._left = None
         self._right = None
@@ -29,10 +41,14 @@ class QdTreeNode:
     def __repr__(self):
         return self.__str__()
 
+    def __len__(self):
+        return len(self._data)
+
     def __dict__(self):
         return {
             "id": self._id,
             "cut": self._cut,
+            "size": len(self),
             "ranges": self._ranges,
             "left": self._left.__dict__() if self._left is not None else None,
             "right": self._right.__dict__() if self._right is not None else None,
@@ -52,13 +68,13 @@ class QdTreeNode:
 
     def encode(self) -> np.ndarray:
         return np.concatenate(
-            [self._ranges[attr].encode() for attr in self._attributes]
+            [self._ranges[attr].encode() for attr in self._context.attributes]
         )
 
     def encode_space(self) -> Tuple[np.ndarray, np.ndarray]:
         node_low = []
         node_high = []
-        for attr in self._attributes:
+        for attr in self._context.attributes:
             low, high = self._ranges[attr].encode_space()
             node_low.append(low)
             node_high.append(high)
@@ -78,46 +94,68 @@ class QdTreeNode:
         if new_ranges is None:
             return False
 
+        true_data = false_data = self._data
+        if len(self._data) > 0:
+            cut_eval_true = cut.evaluate(self._data)
+            true_data = self._data[cut_eval_true]
+            false_data = self._data[~cut_eval_true]
+
+        if (
+            len(true_data) < self._context.min_leaf_size
+            or len(false_data) < self._context.min_leaf_size
+        ):
+            return False
+
         true_range, false_range = new_ranges
         self._left = QdTreeNode(
-            self.id * 2, {**self._ranges, cut.attr1: true_range}, self._attributes
+            self._context,
+            self.id * 2,
+            {**self._ranges, cut.attr1: true_range},
+            true_data,
         )
         self._right = QdTreeNode(
-            self.id * 2 + 1, {**self._ranges, cut.attr1: false_range}, self._attributes
+            self._context,
+            self.id * 2 + 1,
+            {**self._ranges, cut.attr1: false_range},
+            false_data,
         )
         self._cut = cut
         return True
 
-    def route_tuple(self, row: Dict[str, SchemaType]) -> int:
+    def route(self, rows: pd.DataFrame) -> pd.Series:
         """Route a tuple to a leaf node.
 
         Returns the id of the leaf node.
         """
-        if self._cut is None:
-            return self._id
+        if len(rows) == 0:
+            return pd.Series(dtype=int)
 
-        if self._cut.attr1 not in row:
-            raise RuntimeError(f"Attribute {self._cut.attr1} not in row")
+        if self._cut is None:
+            return pd.Series(self._id, index=rows.index)
 
         assert self._left is not None and self._right is not None
-        if self._cut.evaluate(row):
-            return self._left.route_tuple(row)
-        else:
-            return self._right.route_tuple(row)
+
+        results = pd.Series(index=rows.index, dtype=int)
+        cut_eval_true = self._cut.evaluate(rows)
+        results[cut_eval_true] = self._left.route(rows[cut_eval_true])
+        results[~cut_eval_true] = self._right.route(rows[~cut_eval_true])
+
+        return results
 
 
 class QdTree:
-    __slots__ = ["_root"]
+    __slots__ = ["_context", "_root"]
 
+    _context: QdTreeContext
     _root: QdTreeNode
 
-    def __init__(self, repo: CutRepository):
+    def __init__(self, repo: CutRepository, data: pd.DataFrame, min_leaf_size: int = 0):
+        self._context = QdTreeContext(list(repo.schema.keys()), min_leaf_size)
         ranges = {attr: Range(repo.dict) for attr in repo.schema}
-        attributes = list(repo.schema.keys())
-        self._root = QdTreeNode(1, ranges, attributes)
+        self._root = QdTreeNode(self._context, 1, ranges, data)
 
     def __str__(self):
-        return str(self._root)
+        return f"{self._context}\n{self._root}"
 
     def __repr__(self):
         return self.__str__()
@@ -126,41 +164,9 @@ class QdTree:
     def root(self) -> QdTreeNode:
         return self._root
 
-    def route_tuple(self, row: Dict[str, SchemaType]) -> int:
+    def route(self, rows: pd.DataFrame) -> pd.Series:
         """Route a tuple to a leaf node.
 
         Returns the id of the leaf node.
         """
-        return self._root.route_tuple(row)
-
-
-# Example
-if __name__ == "__main__":
-    from qdtree.schema import Schema
-
-    schema: Schema = {
-        "x": "float",
-        "y": "int",
-    }
-
-    builder = CutRepository.Builder(schema)
-    builder.add("x", "<", "0.5")
-    builder.add("y", ">=", "10")
-    builder.add("x", ">", "40")
-    builder.add("y", "<=", "50")
-    builder.add("y", ">", "8")
-
-    repo = builder.build()
-
-    qdtree = QdTree(repo)
-
-    assert qdtree.root.cut(repo.get("x", "<", "0.5")) == True
-    assert qdtree.root.left is not None
-    assert qdtree.root.left.cut(repo.get("y", ">=", "10")) == True
-    assert qdtree.root.right is not None
-    assert qdtree.root.right.cut(repo.get("y", "<=", "50")) == True
-    assert qdtree.root.left.right is not None
-    assert qdtree.root.left.right.cut(repo.get("x", ">", "40")) == False
-    assert qdtree.root.left.right.cut(repo.get("y", ">", "8")) == True
-
-    print(qdtree)
+        return self._root.route(rows)

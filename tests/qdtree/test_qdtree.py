@@ -1,7 +1,10 @@
+import pandas as pd
+import pytest
 from qdtree import QdTree, CutRepository, Schema, Range
 
 
-def test_qdtree():
+@pytest.fixture
+def repo():
     schema: Schema = {
         "x": "float",
         "y": "int",
@@ -9,23 +12,130 @@ def test_qdtree():
 
     builder = CutRepository.Builder(schema)
     builder.add("x", "<", "0.5")
-    builder.add("y", ">=", "10")
-    builder.add("x", ">", "40")
-    builder.add("y", "<=", "50")
-    builder.add("y", ">", "8")
+    builder.add("y", ">", "50")
+    builder.add("x", "<=", "0.75")
+    builder.add("y", ">=", "75")
 
-    repo = builder.build()
+    return builder.build()
 
-    qdtree = QdTree(repo)
-    assert qdtree.root.cut(repo.get("x", "<", "0.5")) == True
-    assert qdtree.root.left is not None
-    assert qdtree.root.left.cut(repo.get("y", ">=", "10")) == True
-    assert qdtree.root.right is not None
-    assert qdtree.root.right.cut(repo.get("y", "<=", "50")) == True
-    assert qdtree.root.left.right is not None
-    assert qdtree.root.left.right.cut(repo.get("x", ">", "40")) == False
-    assert qdtree.root.left.right.cut(repo.get("y", ">", "8")) == True
 
-    assert qdtree.route_tuple({"x": 0.2, "y": 10}) == 4
-    assert qdtree.route_tuple({"x": 0.2, "y": 9}) == 10
-    assert qdtree.route_tuple({"x": 0.8, "y": 10}) == 6
+def test_qdtree_build_and_route(repo):
+    qdtree = QdTree(repo, pd.DataFrame())
+    root = qdtree.root
+
+    assert root._id == 1
+    assert str(root._ranges["x"]) == "(-inf, inf)"
+    assert str(root._ranges["y"]) == "(-inf, inf)"
+    assert root.cut(repo.get("x", "<", "0.5")) == True
+    if True:
+        assert root.left is not None
+        assert root.left._id == 2
+        assert str(root.left._ranges["x"]) == "(-inf, 0.5)"
+        assert str(root.left._ranges["y"]) == "(-inf, inf)"
+        assert root.left.cut(repo.get("y", ">", "50")) == True
+        if True:
+            assert root.left.left is not None
+            assert root.left.left._id == 4
+            assert str(root.left.left._ranges["x"]) == "(-inf, 0.5)"
+            assert str(root.left.left._ranges["y"]) == "(50, inf)"
+            assert root.left.left.cut(repo.get("y", ">=", "75")) == True
+            if True:
+                assert root.left.left.left is not None
+                assert root.left.left.left._id == 8
+                assert str(root.left.left.left._ranges["x"]) == "(-inf, 0.5)"
+                assert str(root.left.left.left._ranges["y"]) == "[75, inf)"
+
+                assert root.left.left.right is not None
+                assert root.left.left.right._id == 9
+                assert str(root.left.left.right._ranges["x"]) == "(-inf, 0.5)"
+                assert str(root.left.left.right._ranges["y"]) == "(50, 75)"
+                assert root.left.left.right.cut(repo.get("y", ">", "50")) == False
+
+            assert root.left.right is not None
+            assert root.left.right._id == 5
+            assert str(root.left.right._ranges["x"]) == "(-inf, 0.5)"
+            assert str(root.left.right._ranges["y"]) == "(-inf, 50]"
+            assert root.left.right.cut(repo.get("y", ">=", "75")) == False
+
+        assert root.right is not None
+        assert root.right._id == 3
+        assert str(root.right._ranges["x"]) == "[0.5, inf)"
+        assert str(root.left._ranges["y"]) == "(-inf, inf)"
+        assert root.right.cut(repo.get("x", "<=", "0.75")) == True
+        if True:
+            assert root.right.left is not None
+            assert root.right.left._id == 6
+            assert str(root.right.left._ranges["x"]) == "[0.5, 0.75]"
+            assert str(root.right.left._ranges["y"]) == "(-inf, inf)"
+            assert root.right.left.cut(repo.get("x", "<", "0.5")) == False
+
+            assert root.right.right is not None
+            assert root.right.right._id == 7
+            assert str(root.right.right._ranges["x"]) == "(0.75, inf)"
+            assert str(root.right.right._ranges["y"]) == "(-inf, inf)"
+            assert root.right.right.cut(repo.get("x", "<=", "0.75")) == False
+
+    print(qdtree)
+
+    data = pd.DataFrame(
+        [
+            {"x": 0, "y": 75},
+            {"x": 0.49999, "y": 60},
+            {"x": 0.500001, "y": -200},
+            {"x": 100000, "y": -100000},
+        ]
+    )
+    expected_nodes = pd.Series([8, 9, 6, 7], index=data.index)
+    assert (qdtree.route(data) == expected_nodes).all()
+
+
+def test_qdtree_min_leaf_size(repo):
+    data = pd.DataFrame(
+        [
+            {"x": -1.0, "y": 0},
+            {"x": 0, "y": 75},
+            {"x": 0.4, "y": 60},
+            {"x": 0.1, "y": -100000},
+            {"x": 1.0, "y": -200},
+            {"x": 2.0, "y": 100000},
+        ]
+    )
+
+    qdtree = QdTree(repo, data, min_leaf_size=2)
+    root = qdtree.root
+
+    assert root._id == 1
+    assert len(root) == 6
+    assert str(root._ranges["x"]) == "(-inf, inf)"
+    assert str(root._ranges["y"]) == "(-inf, inf)"
+    assert root.cut(repo.get("x", "<", "0.5")) == True
+    if True:
+        assert root.left is not None
+        assert root.left._id == 2
+        assert len(root.left) == 4
+        assert str(root.left._ranges["x"]) == "(-inf, 0.5)"
+        assert str(root.left._ranges["y"]) == "(-inf, inf)"
+        assert root.left.cut(repo.get("y", ">", "50")) == True
+        if True:
+            assert root.left.left is not None
+            assert root.left.left._id == 4
+            assert len(root.left.left) == 2
+            assert str(root.left.left._ranges["x"]) == "(-inf, 0.5)"
+            assert str(root.left.left._ranges["y"]) == "(50, inf)"
+            assert root.left.left.cut(repo.get("y", ">=", "75")) == False
+
+            assert root.left.right is not None
+            assert root.left.right._id == 5
+            assert len(root.left.right) == 2
+            assert str(root.left.right._ranges["x"]) == "(-inf, 0.5)"
+            assert str(root.left.right._ranges["y"]) == "(-inf, 50]"
+            assert root.left.right.cut(repo.get("y", ">=", "75")) == False
+
+        assert root.right is not None
+        assert root.right._id == 3
+        assert len(root.right) == 2
+        assert str(root.right._ranges["x"]) == "[0.5, inf)"
+        assert str(root.left._ranges["y"]) == "(-inf, inf)"
+        assert root.right.cut(repo.get("x", "<=", "0.75")) == False
+
+    print(qdtree)

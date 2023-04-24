@@ -1,3 +1,5 @@
+import pandas as pd
+
 from typing import Dict, List, Literal, Optional, Set, Tuple
 
 from qdtree.dictionary import Dictionary
@@ -57,7 +59,7 @@ class Cut:
     def attr2(self) -> SchemaType:
         return self._dict[self._attr2]
 
-    def evaluate(self, row: Dict[str, SchemaType]) -> bool:
+    def evaluate(self, rows: pd.DataFrame) -> pd.Series:
         """Evaluate the cut on a row.
 
         Args:
@@ -66,22 +68,16 @@ class Cut:
         Returns:
             True if the cut evaluates to true, False otherwise.
         """
-        row_value = row[self._attr1]
-
-        if type(row_value) != type(self.attr2):
-            raise ValueError(
-                f"Type mismatch on attribute '{self._attr1}'. "
-                f"Row: {row_value} ({type(row_value)}) Cut: {self.attr2} ({type(self.attr2)}))"
-            )
+        col = rows[self._attr1]
 
         if self._op == "<":
-            return row_value < self.attr2  # type: ignore
+            return col < self.attr2
         elif self._op == ">":
-            return row_value > self.attr2  # type: ignore
+            return col > self.attr2
         elif self._op == "<=":
-            return row_value <= self.attr2  # type: ignore
+            return col <= self.attr2
         elif self._op == ">=":
-            return row_value >= self.attr2  # type: ignore
+            return col >= self.attr2
         else:
             assert False, f"Invalid operator {self._op}"
 
