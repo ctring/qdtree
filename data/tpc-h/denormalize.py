@@ -244,7 +244,7 @@ denormalized_tpch = lineitem_orders_partsupp
 
 print("=====")
 print("Denormalized schema:")
-print(list(denormalized_tpch.columns))
+print("\n".join(list(denormalized_tpch.columns)))
 print("=====")
 
 if args.out.endswith(".parquet"):
