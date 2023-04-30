@@ -1,0 +1,41 @@
+{
+  "1": {
+    "regex": "l_shipdate <= date '1998-12-01' - interval '(\\d+)' day",
+    "predicate": {
+      "type": "expr",
+      "children": ["l_shipdate", "<=", "date '1998-12-01' - interval '$1' day"]
+    }
+  },
+  "3": {
+    "regex": "o_orderdate < date '([0-9-]+)' and l_shipdate > date '([0-9-]+)'",
+    "predicate": {
+      "type": "and",
+      "children": [
+        {
+          "type": "expr",
+          "children": ["o_orderdate", "<", "date '$1'"]
+        },
+        {
+          "type": "expr",
+          "children": ["l_shipdate", ">", "date '$2'"]
+        }
+      ]
+    }
+  },
+  "4": {
+    "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)' \\+ interval '3' month",
+    "predicate": {
+      "type": "and",
+      "children": [
+        {
+          "type": "expr",
+          "children": ["o_orderdate", ">=", "date '$1'"]
+        },
+        {
+          "type": "expr",
+          "children": ["o_orderdate", "<", "date '$1' + interval '3' month"]
+        }
+      ]
+    }
+  }
+}
