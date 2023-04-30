@@ -30,7 +30,7 @@ def process_value(val, match):
 
         date = datetime.datetime.strptime(date, DATE_FORMAT)
         date = doop(date, op, relativedelta(**{unit + "s": int(delta)}))
-        val = f"date '{date.strftime(DATE_FORMAT)}'"
+        val = f"{date.strftime(DATE_FORMAT)}"
 
     return val
 

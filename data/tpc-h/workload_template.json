@@ -13,11 +13,11 @@
       "children": [
         {
           "type": "expr",
-          "children": ["o_orderdate", "<", "date '$1'"]
+          "children": ["o_orderdate", "<", "$1"]
         },
         {
           "type": "expr",
-          "children": ["l_shipdate", ">", "date '$2'"]
+          "children": ["l_shipdate", ">", "$2"]
         }
       ]
     }
@@ -29,7 +29,7 @@
       "children": [
         {
           "type": "expr",
-          "children": ["o_orderdate", ">=", "date '$1'"]
+          "children": ["o_orderdate", ">=", "$1"]
         },
         {
           "type": "expr",
