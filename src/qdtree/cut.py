@@ -17,7 +17,7 @@ class Cut:
     a value. Internally, the value is stored as an index into the dictionary.
     """
 
-    __slots__ = ["_dict", "_attr1", "_op", "_attr2"]
+    __slots__ = ["_dict", "_attr1", "_op", "_attr2_index"]
 
     _op: Operator
 
@@ -26,7 +26,7 @@ class Cut:
         dict: Dictionary,
         attr1: str,
         op: Operator,
-        attr2: int, # this is the index into the dictionary
+        attr2_index: int,
     ):
         """Create a new cut.
 
@@ -39,7 +39,7 @@ class Cut:
         self._dict = dict
         self._attr1 = attr1
         self._op = op
-        self._attr2 = attr2
+        self._attr2_index = attr2_index
 
     def __str__(self):
         return f"{self._attr1} {self._op} {self.attr2}"
@@ -57,15 +57,16 @@ class Cut:
 
     @property
     def attr2(self) -> SchemaType:
-        return self._dict[self._attr2]
+        return self._dict[self._attr2_index]
 
-    def evaluate(self, rows: pd.DataFrame) -> pd.Series:
+    def eval_data(self, rows: pd.DataFrame) -> pd.Series:
         """Evaluate the cut on a row.
 
         Args:
-            row: The row to evaluate the cut on.
+            rows: The rows to evaluate the cut on.
 
         Returns:
+            A boolean series, where each element is
             True if the cut evaluates to true, False otherwise.
         """
         col = rows[self._attr1]
@@ -80,6 +81,9 @@ class Cut:
             return col >= self.attr2
         else:
             assert False, f"Invalid operator {self._op}"
+
+    def eval_range(self, range: Range) -> bool:
+        return False
 
     def cut_range(self, range: Range) -> Optional[Tuple["Range", "Range"]]:
         """Cut a range.
@@ -106,54 +110,54 @@ class Cut:
         # fmt: off
         if self._op == '<' or self._op == '<=':
             # {a, b} => T: {a, min(b, attr2)}, F: {min(b, attr2), b}
-            true_range_left = range._left
-            true_range_left_open = range._open_left
+            pos_range_left = range._left
+            pos_range_left_open = range._open_left
 
-            true_range_right = self._attr2
-            true_range_right_open = self._op == '<'
+            pos_range_right = self._attr2_index
+            pos_range_right_open = self._op == '<'
 
-            false_range_left = self._attr2
-            false_range_left_open = self._op == '<='
+            neg_range_left = self._attr2_index
+            neg_range_left_open = self._op == '<='
 
-            false_range_right = range._right
-            false_range_right_open = range._open_right
+            neg_range_right = range._right
+            neg_range_right_open = range._open_right
 
-            true_range = Range(
+            pos_range = Range(
                 self._dict,
-                true_range_left, true_range_right,
-                true_range_left_open, true_range_right_open
+                pos_range_left, pos_range_right,
+                pos_range_left_open, pos_range_right_open
             )
-            false_range = Range(
+            neg_range = Range(
                 self._dict,
-                false_range_left, false_range_right,
-                false_range_left_open, false_range_right_open
+                neg_range_left, neg_range_right,
+                neg_range_left_open, neg_range_right_open
             )
-            return (true_range, false_range)
+            return (pos_range, neg_range)
         elif self._op == '>' or self._op == '>=':
             # {a, b} => T: {max(a, attr2), b}, F: {a, max(a, attr2)}
-            true_range_left = self._attr2
-            true_range_left_open = self.op == '>'
+            pos_range_left = self._attr2_index
+            pos_range_left_open = self.op == '>'
 
-            true_range_right = range._right
-            true_range_right_open = range._open_right
+            pos_range_right = range._right
+            pos_range_right_open = range._open_right
 
-            false_range_left = range._left
-            false_range_left_open = range._open_left
+            neg_range_left = range._left
+            neg_range_left_open = range._open_left
 
-            false_range_right = self._attr2
-            false_range_right_open = self.op == '>='
+            neg_range_right = self._attr2_index
+            neg_range_right_open = self.op == '>='
 
-            true_range = Range(
+            pos_range = Range(
                 self._dict,
-                true_range_left, true_range_right,
-                true_range_left_open, true_range_right_open
+                pos_range_left, pos_range_right,
+                pos_range_left_open, pos_range_right_open
             )
-            false_range = Range(
+            neg_range = Range(
                 self._dict,
-                false_range_left, false_range_right,
-                false_range_left_open, false_range_right_open
+                neg_range_left, neg_range_right,
+                neg_range_left_open, neg_range_right_open
             )
-            return (true_range, false_range)
+            return (pos_range, neg_range)
         else:
             raise RuntimeError(f'Unknown operator {self._op}')
         # fmt: on

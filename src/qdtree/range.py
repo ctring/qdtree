@@ -1,10 +1,9 @@
 import numpy as np
 
-from typing import List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 from qdtree.dictionary import Dictionary
 from qdtree.schema import SchemaType
-
 
 class Range:
     """A range of attribute values.
@@ -60,3 +59,6 @@ class Range:
             np.array([dict_min_index, dict_min_index, 0, 0]),
             np.array([dict_max_index, dict_max_index, 1, 1]),
         )
+
+
+Block = Dict[str, Range]

@@ -2,10 +2,10 @@ import pprint
 import numpy as np
 import pandas as pd
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional, Tuple
 
 from qdtree.cut import Cut, CutRepository
-from qdtree.range import Range
+from qdtree.range import Range, Block
 
 
 class QdTreeContext(NamedTuple):
@@ -14,7 +14,7 @@ class QdTreeContext(NamedTuple):
 
 
 class QdTreeNode:
-    __slots__ = ["_context", "_id", "_ranges", "_data", "_cut", "_left", "_right"]
+    __slots__ = ["_context", "_id", "_block", "_data", "_cut", "_left", "_right"]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
@@ -24,12 +24,12 @@ class QdTreeNode:
         self,
         context: QdTreeContext,
         id: int,
-        ranges: Dict[str, Range],
+        block: Block,
         data: pd.DataFrame,
     ):
         self._context = context
         self._id = id
-        self._ranges = ranges
+        self._block = block
         self._data = data
         self._cut = None
         self._left = None
@@ -49,7 +49,7 @@ class QdTreeNode:
             "id": self._id,
             "cut": self._cut,
             "size": len(self),
-            "ranges": self._ranges,
+            "block": self._block,
             "left": self._left.__dict__() if self._left is not None else None,
             "right": self._right.__dict__() if self._right is not None else None,
         }
@@ -65,17 +65,21 @@ class QdTreeNode:
     @property
     def right(self) -> Optional["QdTreeNode"]:
         return self._right
+    
+    @property
+    def block(self) -> Block:
+        return self._block
 
     def encode(self) -> np.ndarray:
         return np.concatenate(
-            [self._ranges[attr].encode() for attr in self._context.attributes]
+            [self._block[attr].encode() for attr in self._context.attributes]
         )
 
     def encoding_space(self) -> Tuple[np.ndarray, np.ndarray]:
         node_low = []
         node_high = []
         for attr in self._context.attributes:
-            low, high = self._ranges[attr].encoding_space()
+            low, high = self._block[attr].encoding_space()
             node_low.append(low)
             node_high.append(high)
         return np.concatenate(node_low), np.concatenate(node_high)
@@ -88,15 +92,15 @@ class QdTreeNode:
         if self._cut is not None:
             raise RuntimeError("Cut already exists")
 
-        assert cut.attr1 in self._ranges, f"Attribute {cut.attr1} not in ranges"
+        assert cut.attr1 in self._block, f"Attribute {cut.attr1} not in block"
 
-        new_ranges = cut.cut_range(self._ranges[cut.attr1])
-        if new_ranges is None:
+        new_block = cut.cut_range(self._block[cut.attr1])
+        if new_block is None:
             return False
 
         true_data = false_data = self._data
         if len(self._data) > 0:
-            cut_eval_true = cut.evaluate(self._data)
+            cut_eval_true = cut.eval_data(self._data)
             true_data = self._data[cut_eval_true]
             false_data = self._data[~cut_eval_true]
 
@@ -106,17 +110,17 @@ class QdTreeNode:
         ):
             return False
 
-        true_range, false_range = new_ranges
+        true_range, false_range = new_block
         self._left = QdTreeNode(
             self._context,
             self.id * 2,
-            {**self._ranges, cut.attr1: true_range},
+            {**self._block, cut.attr1: true_range},
             true_data,
         )
         self._right = QdTreeNode(
             self._context,
             self.id * 2 + 1,
-            {**self._ranges, cut.attr1: false_range},
+            {**self._block, cut.attr1: false_range},
             false_data,
         )
         self._cut = cut
@@ -136,7 +140,7 @@ class QdTreeNode:
         assert self._left is not None and self._right is not None
 
         results = pd.Series(index=rows.index, dtype=int)
-        cut_eval_true = self._cut.evaluate(rows)
+        cut_eval_true = self._cut.eval_data(rows)
         results[cut_eval_true] = self._left.route(rows[cut_eval_true])
         results[~cut_eval_true] = self._right.route(rows[~cut_eval_true])
 
@@ -151,8 +155,8 @@ class QdTree:
 
     def __init__(self, repo: CutRepository, data: pd.DataFrame, min_leaf_size: int = 0):
         self._context = QdTreeContext(list(repo.schema.keys()), min_leaf_size)
-        ranges = {attr: Range(repo.dict) for attr in repo.schema}
-        self._root = QdTreeNode(self._context, 1, ranges, data)
+        block = {attr: Range(repo.dict) for attr in repo.schema}
+        self._root = QdTreeNode(self._context, 1, block, data)
 
     def __str__(self):
         return f"{self._context}\n{self._root}"

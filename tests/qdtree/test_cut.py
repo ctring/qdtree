@@ -3,7 +3,7 @@ from qdtree import CutRepository, Schema, Range
 
 
 @pytest.fixture
-def repo():
+def repo() -> CutRepository:
     schema: Schema = {"count": "int", "measurement": "float"}
 
     builder = CutRepository.Builder(schema)
@@ -21,7 +21,7 @@ def repo():
     return builder.build()
 
 
-def test_cut_repository(repo):
+def test_cut_repository(repo: CutRepository):
     assert len(repo) == 8
 
     assert str(repo.get("count", ">", "10")) == "count > 10"
@@ -35,24 +35,24 @@ def test_cut_repository(repo):
     assert str(repo.get("measurement", "<=", "4.4")) == "measurement <= 4.4"
 
 
-def test_cut_evaluate(repo):
+def test_cut_evaluate(repo: CutRepository):
     row = {
         "count": 15,
         "measurement": 2.1,
     }
 
-    assert repo.get("count", ">", "10").evaluate(row) == True
-    assert repo.get("count", "<", "20").evaluate(row) == True
-    assert repo.get("count", ">=", "30").evaluate(row) == False
-    assert repo.get("count", "<=", "40").evaluate(row) == True
+    assert repo.get("count", ">", "10").eval_data(row) == True
+    assert repo.get("count", "<", "20").eval_data(row) == True
+    assert repo.get("count", ">=", "30").eval_data(row) == False
+    assert repo.get("count", "<=", "40").eval_data(row) == True
 
-    assert repo.get("measurement", ">", "1.1").evaluate(row) == True
-    assert repo.get("measurement", "<", "2.2").evaluate(row) == True
-    assert repo.get("measurement", ">=", "3.3").evaluate(row) == False
-    assert repo.get("measurement", "<=", "4.4").evaluate(row) == True
+    assert repo.get("measurement", ">", "1.1").eval_data(row) == True
+    assert repo.get("measurement", "<", "2.2").eval_data(row) == True
+    assert repo.get("measurement", ">=", "3.3").eval_data(row) == False
+    assert repo.get("measurement", "<=", "4.4").eval_data(row) == True
 
 
-def test_cut_range(repo):
+def test_cut_range(repo: CutRepository):
     range0 = Range(repo.dict)
     assert str(range0) == "(-inf, inf)"
 

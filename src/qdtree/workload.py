@@ -3,6 +3,7 @@ import pprint
 from typing import Dict, Literal, List
 from qdtree.cut import CutRepository, Cut
 from qdtree.schema import Schema
+from qdtree.range import Block
 
 
 class Workload:
@@ -69,6 +70,9 @@ class Predicate:
             return CutExpr(repo.get(children[0], children[1], children[2]))
         else:
             raise ValueError(f"Invalid predicate type: {pred}")
+        
+    def eval(self, _: Block) -> bool:
+        raise NotImplementedError()
 
 
 class BoolOp(Predicate):
@@ -81,6 +85,13 @@ class BoolOp(Predicate):
 
     def __repr__(self):
         return f" {self.op}(" + ", ".join(repr(child) for child in self.children) + ")"
+    
+    def eval(self, block: Block) -> bool:
+        children_eval = [child.eval(block) for child in self.children]
+        if self.op == "and":
+            return all(children_eval)
+        elif self.op == "or":
+            return any(children_eval)
 
 
 class CutExpr(Predicate):
@@ -92,3 +103,6 @@ class CutExpr(Predicate):
 
     def __repr__(self):
         return repr(self.cut)
+    
+    def eval(self, block: Block) -> bool:
+        pass
