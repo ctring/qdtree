@@ -41,19 +41,36 @@ Put the following script in the same directory as the `qgen` executable. This sc
 set -e
 
 usage() {
-    echo "Usage: ./run_qgen.sh [-n <number of queries per template>] <template path> <output path>"
+    echo "Usage: ./run_qgen.sh [OPTIONS] <template path> <output path>"
+    echo "Options:"
+    echo "  -n <num_queries>  Number of queries to generate for each template. Default: 1"
+    echo "  -s <scale_factor> Scale factor to use for the queries. Default: 1"
     exit 1
 }
 
 NUM_QUERIES=1
-while getopts n: flag
-do
-    case "${flag}" in
-        n) NUM_QUERIES=${OPTARG};;
-    esac
+SCALE_FACTOR=1
+
+# Get the flags from the command line
+while getopts ":n:s:" opt; do
+  case $opt in
+    n)
+      NUM_QUERIES=$OPTARG
+      ;;
+    s)
+      SCALE_FACTOR=$OPTARG
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      usage
+      ;;
+  esac
 done
+
+# Get the positional arguments
 shift $((OPTIND-1))
 
+# Check that the correct number of arguments were supplied
 if [ "$#" -ne 2 ]; then
     usage
 fi
@@ -67,8 +84,9 @@ for file in $DSS_QUERY/*.sql; do
   filename="${filename%.*}"
 
   for i in $(seq 1 $NUM_QUERIES); do
+    # Set the variable seed to current time + i
     seed=$(( $(date +%s) + $i ))
-    ./qgen -c $filename -r $seed > "$OUT/$filename.$i.sql"
+    ./qgen -c $filename -r $seed -s $SCALE_FACTOR > "$OUT/$filename.$i.sql"
     echo Query written to "$OUT/$filename.$i.sql"
   done
 done
