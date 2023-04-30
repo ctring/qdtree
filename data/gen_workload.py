@@ -1,3 +1,6 @@
+# Example usage:
+#   python3 gen_workload.py tpc-h/workload_template.json tpc-h/queries --out tpc-h/workload.json
+#
 import argparse
 import datetime
 import copy
@@ -58,9 +61,14 @@ args = parser.parse_args()
 with open(args.template, "r") as f:
     template = json.load(f)
 
-workload = {}
+workload = {
+    "schema": template["schema"],
+    "queries": {},
+}
 queries = os.listdir(args.queries)
-for k, value in template.items():
+
+# Iterate over the query template and extract the predicates
+for k, value in template["queries"].items():
     target_queries = [q for q in queries if q.startswith(f"{k}.")]
     regex = value["regex"]
     for q in target_queries:
@@ -71,7 +79,7 @@ for k, value in template.items():
         if match:
             new_predicate = copy.deepcopy(value["predicate"])
             substitute_predicate(new_predicate, match)
-            workload[q] = new_predicate
+            workload["queries"][q] = new_predicate
 
 with open(args.output, "w") as f:
     json.dump(workload, f, indent=2)

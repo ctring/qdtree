@@ -26,7 +26,7 @@ class Cut:
         dict: Dictionary,
         attr1: str,
         op: Operator,
-        attr2: int,
+        attr2: int, # this is the index into the dictionary
     ):
         """Create a new cut.
 
