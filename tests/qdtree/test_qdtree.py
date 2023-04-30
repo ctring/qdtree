@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from qdtree import QdTree, CutRepository, Schema, Range
+from qdtree import QdTree, CutRepository, Schema
 
 
 @pytest.fixture
@@ -49,7 +49,8 @@ def test_qdtree_build_and_route(repo: CutRepository):
                 assert root.left.left.right._id == 9
                 assert str(root.left.left.right.block["x"]) == "(-inf, 0.5)"
                 assert str(root.left.left.right.block["y"]) == "(50, 75)"
-                assert root.left.left.right.cut(repo.get("y", ">", "50")) == False
+                assert root.left.left.right.cut(
+                    repo.get("y", ">", "50")) == False
 
             assert root.left.right is not None
             assert root.left.right._id == 5

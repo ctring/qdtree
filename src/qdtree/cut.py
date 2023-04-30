@@ -4,7 +4,7 @@ from typing import Dict, List, Literal, Optional, Set, Tuple
 
 from qdtree.dictionary import Dictionary
 from qdtree.schema import Schema, SchemaType, SchemaTypeTag
-from qdtree.range import Range
+from qdtree.range import Range, RangeWithDict
 
 Operator = Literal["<", ">", "<=", ">="]
 
@@ -83,9 +83,22 @@ class Cut:
             assert False, f"Invalid operator {self._op}"
 
     def eval_range(self, range: Range) -> bool:
-        return False
+        """Evaluate the cut on a range.
 
-    def cut_range(self, range: Range) -> Optional[Tuple["Range", "Range"]]:
+        Args:
+            range: The range to evaluate the cut on.
+
+        Returns:
+            True if the cut evaluates to true for at least one value in the
+            range, False otherwise.
+        """
+        init_range = RangeWithDict(self._dict)
+        res = self.cut_range(init_range)
+        assert res is not None
+        pos_range, _ = res
+        return pos_range.overlaps(range)
+
+    def cut_range(self, range: RangeWithDict) -> Optional[Tuple["RangeWithDict", "RangeWithDict"]]:
         """Cut a range.
 
         Args:
@@ -110,7 +123,7 @@ class Cut:
         # fmt: off
         if self._op == '<' or self._op == '<=':
             # {a, b} => T: {a, min(b, attr2)}, F: {min(b, attr2), b}
-            pos_range_left = range._left
+            pos_range_left = range._left_index
             pos_range_left_open = range._open_left
 
             pos_range_right = self._attr2_index
@@ -119,15 +132,15 @@ class Cut:
             neg_range_left = self._attr2_index
             neg_range_left_open = self._op == '<='
 
-            neg_range_right = range._right
+            neg_range_right = range._right_index
             neg_range_right_open = range._open_right
 
-            pos_range = Range(
+            pos_range = RangeWithDict(
                 self._dict,
                 pos_range_left, pos_range_right,
                 pos_range_left_open, pos_range_right_open
             )
-            neg_range = Range(
+            neg_range = RangeWithDict(
                 self._dict,
                 neg_range_left, neg_range_right,
                 neg_range_left_open, neg_range_right_open
@@ -138,21 +151,21 @@ class Cut:
             pos_range_left = self._attr2_index
             pos_range_left_open = self.op == '>'
 
-            pos_range_right = range._right
+            pos_range_right = range._right_index
             pos_range_right_open = range._open_right
 
-            neg_range_left = range._left
+            neg_range_left = range._left_index
             neg_range_left_open = range._open_left
 
             neg_range_right = self._attr2_index
             neg_range_right_open = self.op == '>='
 
-            pos_range = Range(
+            pos_range = RangeWithDict(
                 self._dict,
                 pos_range_left, pos_range_right,
                 pos_range_left_open, pos_range_right_open
             )
-            neg_range = Range(
+            neg_range = RangeWithDict(
                 self._dict,
                 neg_range_left, neg_range_right,
                 neg_range_left_open, neg_range_right_open

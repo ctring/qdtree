@@ -1,7 +1,7 @@
 import pprint
 
 from typing import Dict, Literal, List
-from qdtree.cut import CutRepository, Cut
+from qdtree.cut import CutRepository, Cut, Operator
 from qdtree.schema import Schema
 from qdtree.range import Block
 
@@ -66,8 +66,8 @@ class Predicate:
             children = [Predicate.from_dict(child, repo) for child in pred["children"]]
             return BoolOp(typ, children)
         elif typ == "expr":
-            children = pred["children"]
-            return CutExpr(repo.get(children[0], children[1], children[2]))
+            attr1, op, attr2 = pred["children"]
+            return CutExpr(repo.get(attr1, op, attr2)) # type: ignore
         else:
             raise ValueError(f"Invalid predicate type: {pred}")
         
@@ -92,6 +92,8 @@ class BoolOp(Predicate):
             return all(children_eval)
         elif self.op == "or":
             return any(children_eval)
+        else:
+            raise ValueError(f"Invalid operator: {self.op}")
 
 
 class CutExpr(Predicate):
@@ -105,4 +107,4 @@ class CutExpr(Predicate):
         return repr(self.cut)
     
     def eval(self, block: Block) -> bool:
-        pass
+        return False

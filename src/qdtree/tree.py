@@ -5,7 +5,7 @@ import pandas as pd
 from typing import List, NamedTuple, Optional, Tuple
 
 from qdtree.cut import Cut, CutRepository
-from qdtree.range import Range, Block
+from qdtree.range import RangeWithDict, Block
 
 
 class QdTreeContext(NamedTuple):
@@ -70,16 +70,18 @@ class QdTreeNode:
     def block(self) -> Block:
         return self._block
 
-    def encode(self) -> np.ndarray:
+    @property
+    def encoding(self) -> np.ndarray:
         return np.concatenate(
-            [self._block[attr].encode() for attr in self._context.attributes]
+            [self._block[attr].encoding for attr in self._context.attributes]
         )
 
+    @property
     def encoding_space(self) -> Tuple[np.ndarray, np.ndarray]:
         node_low = []
         node_high = []
         for attr in self._context.attributes:
-            low, high = self._block[attr].encoding_space()
+            low, high = self._block[attr].encoding_space
             node_low.append(low)
             node_high.append(high)
         return np.concatenate(node_low), np.concatenate(node_high)
@@ -155,7 +157,7 @@ class QdTree:
 
     def __init__(self, repo: CutRepository, data: pd.DataFrame, min_leaf_size: int = 0):
         self._context = QdTreeContext(list(repo.schema.keys()), min_leaf_size)
-        block = {attr: Range(repo.dict) for attr in repo.schema}
+        block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
         self._root = QdTreeNode(self._context, 1, block, data)
 
     def __str__(self):

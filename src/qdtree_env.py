@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from collections import deque
-from typing import Deque, Optional
+from typing import Deque
 from gymnasium.spaces import Discrete, Box
 from ray.rllib.env.env_context import EnvContext
 
@@ -30,7 +30,7 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
 
         # Set up the action and observation spaces.
         self.action_space = Discrete(len(self.cut_repo))
-        low, high = self.qd_tree.root.encoding_space()
+        low, high = self.qd_tree.root.encoding_space
         self.observation_space = Box(low=low, high=high, dtype=np.int32)
 
         self.reset()
@@ -42,7 +42,7 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
         self.cur_node = self.qd_tree.root
         self.queue = deque()
 
-        return self.cur_node.encode(), {}
+        return self.cur_node.encoding, {}
 
     def step(self, action: int):
         assert self.cur_node is not None
@@ -61,7 +61,7 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
             self.cur_node = self.queue.popleft()
             done = False
 
-        obs = self.cur_node.encode()
+        obs = self.cur_node.encoding
         reward = 0
 
         return (obs, reward, done, False, {})
