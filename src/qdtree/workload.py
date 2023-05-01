@@ -64,6 +64,9 @@ class Workload:
     def schema(self):
         return self._schema
 
+    def num_queries_can_skip(self, block: Block) -> int:
+        return sum(1 for pred in self._queries.values() if pred.can_skip(block))
+
 
 class Predicate:
     @staticmethod

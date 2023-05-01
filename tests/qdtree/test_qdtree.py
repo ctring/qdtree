@@ -169,3 +169,44 @@ def test_qdtree_min_leaf_size(workload: Workload):
         assert root.right.cut(repo.get("x", "<=", "0.75")) == False
 
     print(qdtree)
+
+
+def test_compute_skipped_records(workload: Workload):
+    repo = workload.cut_repo
+    data = pd.DataFrame(
+        [
+            {"x": -1.0, "y": 0},
+            {"x": 0, "y": 75},
+            {"x": 0.4, "y": 60},
+            {"x": 0.1, "y": -100000},
+            {"x": 1.0, "y": -200},
+            {"x": 2.0, "y": 100000},
+        ]
+    )
+
+    qdtree = QdTree(repo, data)
+    root = qdtree.root
+
+    root.cut(repo.get("x", "<", "0.5"))
+    assert root.left is not None and root.right is not None
+    root.left.cut(repo.get("y", ">", "50"))
+    assert root.left.left is not None and root.left.right is not None
+    # Queries
+    # {
+    #     'q1': x < 0.5,
+    #     'q2': y > 50 and x <= 0.75,
+    #     'q3': y >= 75 or x >= 0.75
+    # }
+    #
+    # Blocks
+    # [
+    #     {'x': [0.5, inf), 'y': (-inf, inf)}  # root.right
+    #     {'x': (-inf, 0.5), 'y': (50, inf)},  # root.left.left
+    #     {'x': (-inf, 0.5), 'y': (-inf, 50]}, # root.left.right
+    # ]
+    qdtree.compute_skipped_records(workload)
+    assert root._skipped_records == 6
+    assert root.left._skipped_records == 4
+    assert root.right._skipped_records == 2  # q1
+    assert root.left.left._skipped_records == 0
+    assert root.left.right._skipped_records == 4  # q2 and q3

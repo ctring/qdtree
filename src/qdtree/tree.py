@@ -7,6 +7,7 @@ from typing import List, NamedTuple, Optional, Set, Tuple
 
 from qdtree.cut import Cut, CutRepository
 from qdtree.range import RangeWithDict, Block
+from qdtree.workload import Workload
 
 
 class QdTreeContext(NamedTuple):
@@ -17,11 +18,12 @@ class QdTreeContext(NamedTuple):
 
 class QdTreeNode:
     __slots__ = ["_context", "_id", "_block",
-                 "_data", "_cut", "_left", "_right"]
+                 "_data", "_cut", "_left", "_right", "_skipped_records"]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
+    _skipped_records: int
 
     def __init__(
         self,
@@ -37,6 +39,7 @@ class QdTreeNode:
         self._cut = None
         self._left = None
         self._right = None
+        self._skipped_records = 0
 
         # A new node is always a leaf
         self._context.leaves.add(self)
@@ -158,6 +161,17 @@ class QdTreeNode:
 
         return results
 
+    def compute_skipped_records(self):
+        if self._cut is None:
+            return
+
+        assert self._left is not None and self._right is not None
+
+        self._left.compute_skipped_records()
+        self._right.compute_skipped_records()
+
+        self._skipped_records = self._left._skipped_records + self._right._skipped_records
+
 
 class QdTree:
     __slots__ = ["_context", "_root"]
@@ -194,3 +208,13 @@ class QdTree:
         Returns the id of the leaf node.
         """
         return self._root.route(rows)
+
+    def compute_skipped_records(self, workload: Workload):
+        """Compute the number of skipped records for each node in the tree."""
+        # Populate the number of skipped records for the leaves
+        for node in self._context.leaves:
+            node._skipped_records = workload.num_queries_can_skip(
+                node.block) * len(node)
+
+        # Recursively compute the results for the inner nodes
+        self._root.compute_skipped_records()
