@@ -53,9 +53,16 @@ class Workload:
     def __repr__(self):
         return f"Workload({repr(self._schema)}, {repr(self._queries)})"
 
+    def __getitem__(self, query_id: str) -> "Predicate":
+        return self._queries[query_id]
+
     @property
     def cut_repo(self):
         return self._cut_repo
+
+    @property
+    def schema(self):
+        return self._schema
 
 
 class Predicate:
@@ -63,15 +70,16 @@ class Predicate:
     def from_dict(pred, repo: CutRepository) -> "Predicate":
         typ = pred["type"]
         if typ in ["and", "or"]:
-            children = [Predicate.from_dict(child, repo) for child in pred["children"]]
+            children = [Predicate.from_dict(child, repo)
+                        for child in pred["children"]]
             return BoolOp(typ, children)
         elif typ == "expr":
             attr1, op, attr2 = pred["children"]
-            return CutExpr(repo.get(attr1, op, attr2)) # type: ignore
+            return CutExpr(repo.get(attr1, op, attr2))  # type: ignore
         else:
             raise ValueError(f"Invalid predicate type: {pred}")
-        
-    def eval(self, _: Block) -> bool:
+
+    def can_skip(self, _: Block) -> bool:
         raise NotImplementedError()
 
 
@@ -85,13 +93,15 @@ class BoolOp(Predicate):
 
     def __repr__(self):
         return f" {self.op}(" + ", ".join(repr(child) for child in self.children) + ")"
-    
-    def eval(self, block: Block) -> bool:
-        children_eval = [child.eval(block) for child in self.children]
+
+    def can_skip(self, block: Block) -> bool:
+        children_eval = [child.can_skip(block) for child in self.children]
         if self.op == "and":
-            return all(children_eval)
-        elif self.op == "or":
+            # If any child skip the block, then the block can be skipped
             return any(children_eval)
+        elif self.op == "or":
+            # If all children skip the block, then the block can be skipped
+            return all(children_eval)
         else:
             raise ValueError(f"Invalid operator: {self.op}")
 
@@ -105,6 +115,7 @@ class CutExpr(Predicate):
 
     def __repr__(self):
         return repr(self.cut)
-    
-    def eval(self, block: Block) -> bool:
-        return False
+
+    def can_skip(self, block: Block) -> bool:
+        attr = self.cut.attr1
+        return not self.cut.overlaps_range(block[attr])

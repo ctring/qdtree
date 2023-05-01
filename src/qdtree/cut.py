@@ -82,7 +82,7 @@ class Cut:
         else:
             assert False, f"Invalid operator {self._op}"
 
-    def eval_range(self, range: Range) -> bool:
+    def overlaps_range(self, range: Range) -> bool:
         """Evaluate the cut on a range.
 
         Args:

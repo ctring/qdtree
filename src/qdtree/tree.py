@@ -2,7 +2,8 @@ import pprint
 import numpy as np
 import pandas as pd
 
-from typing import List, NamedTuple, Optional, Tuple
+from collections import deque
+from typing import List, NamedTuple, Optional, Set, Tuple
 
 from qdtree.cut import Cut, CutRepository
 from qdtree.range import RangeWithDict, Block
@@ -11,10 +12,12 @@ from qdtree.range import RangeWithDict, Block
 class QdTreeContext(NamedTuple):
     attributes: List[str]
     min_leaf_size: int
+    leaves: Set["QdTreeNode"]
 
 
 class QdTreeNode:
-    __slots__ = ["_context", "_id", "_block", "_data", "_cut", "_left", "_right"]
+    __slots__ = ["_context", "_id", "_block",
+                 "_data", "_cut", "_left", "_right"]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
@@ -34,6 +37,9 @@ class QdTreeNode:
         self._cut = None
         self._left = None
         self._right = None
+
+        # A new node is always a leaf
+        self._context.leaves.add(self)
 
     def __str__(self):
         return pprint.pformat(self.__dict__(), sort_dicts=False)
@@ -65,7 +71,7 @@ class QdTreeNode:
     @property
     def right(self) -> Optional["QdTreeNode"]:
         return self._right
-    
+
     @property
     def block(self) -> Block:
         return self._block
@@ -126,6 +132,10 @@ class QdTreeNode:
             false_data,
         )
         self._cut = cut
+
+        # A cut node is no longer a leaf
+        self._context.leaves.remove(self)
+
         return True
 
     def route(self, rows: pd.DataFrame) -> pd.Series:
@@ -155,8 +165,12 @@ class QdTree:
     _context: QdTreeContext
     _root: QdTreeNode
 
-    def __init__(self, repo: CutRepository, data: pd.DataFrame, min_leaf_size: int = 0):
-        self._context = QdTreeContext(list(repo.schema.keys()), min_leaf_size)
+    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 0):
+        self._context = QdTreeContext(
+            attributes=list(repo.schema.keys()),
+            min_leaf_size=min_leaf_size,
+            leaves=set(),
+        )
         block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
         self._root = QdTreeNode(self._context, 1, block, data)
 
@@ -169,6 +183,10 @@ class QdTree:
     @property
     def root(self) -> QdTreeNode:
         return self._root
+
+    @property
+    def blocks(self) -> List[Block]:
+        return [node.block for node in self._context.leaves]
 
     def route(self, rows: pd.DataFrame) -> pd.Series:
         """Route a tuple to a leaf node.

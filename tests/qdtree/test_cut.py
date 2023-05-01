@@ -54,30 +54,36 @@ def test_cut_eval_data(repo: CutRepository):
     assert repo.get("measurement", "<=", "4.4").eval_data(row).all() == True
 
 
-def test_cut_eval_range(repo: CutRepository):
+def test_cut_overlaps_range(repo: CutRepository):
     cut = repo.get("count", ">", "10")
-    assert cut.eval_range(Range(10, 20, open_left=True, open_right=False))
-    assert cut.eval_range(Range(0, 20, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(0, 10, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(0, 10, open_left=False, open_right=False))
+    assert cut.overlaps_range(Range(10, 20, open_left=True, open_right=False))
+    assert cut.overlaps_range(Range(0, 20, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(0, 10, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(0, 10, open_left=False, open_right=False))
 
     cut = repo.get("count", "<", "20")
-    assert cut.eval_range(Range(10, 20, open_left=True, open_right=False))
-    assert cut.eval_range(Range(10, 30, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(20, 30, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(20, 30, open_left=False, open_right=False))
+    assert cut.overlaps_range(Range(10, 20, open_left=True, open_right=False))
+    assert cut.overlaps_range(Range(10, 30, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(20, 30, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(20, 30, open_left=False, open_right=False))
 
     cut = repo.get("count", ">=", "30")
-    assert cut.eval_range(Range(30, 40, open_left=True, open_right=False))
-    assert cut.eval_range(Range(20, 40, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(20, 30, open_left=False, open_right=True))
-    assert cut.eval_range(Range(20, 30, open_left=False, open_right=False))
+    assert cut.overlaps_range(Range(30, 40, open_left=True, open_right=False))
+    assert cut.overlaps_range(Range(20, 40, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(20, 30, open_left=False, open_right=True))
+    assert cut.overlaps_range(Range(20, 30, open_left=False, open_right=False))
 
     cut = repo.get("count", "<=", "40")
-    assert cut.eval_range(Range(30, 40, open_left=True, open_right=False))
-    assert cut.eval_range(Range(30, 50, open_left=False, open_right=True))
-    assert not cut.eval_range(Range(40, 50, open_left=True, open_right=True))
-    assert cut.eval_range(Range(40, 50, open_left=False, open_right=False))
+    assert cut.overlaps_range(Range(30, 40, open_left=True, open_right=False))
+    assert cut.overlaps_range(Range(30, 50, open_left=False, open_right=True))
+    assert not cut.overlaps_range(
+        Range(40, 50, open_left=True, open_right=True))
+    assert cut.overlaps_range(Range(40, 50, open_left=False, open_right=False))
 
 
 def test_cut_range(repo: CutRepository):
