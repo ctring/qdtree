@@ -1,25 +1,53 @@
 import pandas as pd
 import pytest
-from qdtree import QdTree, CutRepository, Schema
+from qdtree import QdTree, Workload, Schema
 
 
 @pytest.fixture
-def repo():
-    schema: Schema = {
-        "x": "float",
-        "y": "int",
+def workload():
+    workload_dict = {
+        "schema": {
+            "x": "float",
+            "y": "int",
+        },
+        "queries": {
+            "q1": {
+                "type": "expr",
+                "children": ["x", "<", "0.5"],
+            },
+            "q2": {
+                "type": "and",
+                "children": [
+                    {
+                        "type": "expr",
+                        "children": ["y", ">", "50"],
+                    },
+                    {
+                        "type": "expr",
+                        "children": ["x", "<=", "0.75"],
+                    },
+                ],
+            },
+            "q3": {
+                "type": "or",
+                "children": [
+                    {
+                        "type": "expr",
+                        "children": ["y", ">=", "75"],
+                    },
+                    {
+                        "type": "expr",
+                        "children": ["x", ">=", "0.75"],
+                    },
+                ],
+            },
+        },
     }
-
-    builder = CutRepository.Builder(schema)
-    builder.add("x", "<", "0.5")
-    builder.add("y", ">", "50")
-    builder.add("x", "<=", "0.75")
-    builder.add("y", ">=", "75")
-
-    return builder.build()
+    return Workload(workload_dict)
 
 
-def test_qdtree_build_and_route(repo: CutRepository):
+def test_qdtree_build_and_route(workload: Workload):
+    repo = workload.cut_repo
     qdtree = QdTree(repo, pd.DataFrame())
     root = qdtree.root
 
@@ -90,7 +118,8 @@ def test_qdtree_build_and_route(repo: CutRepository):
     assert (qdtree.route(data) == expected_nodes).all()
 
 
-def test_qdtree_min_leaf_size(repo: CutRepository):
+def test_qdtree_min_leaf_size(workload: Workload):
+    repo = workload.cut_repo
     data = pd.DataFrame(
         [
             {"x": -1.0, "y": 0},
