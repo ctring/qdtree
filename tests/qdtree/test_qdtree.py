@@ -205,8 +205,8 @@ def test_compute_skipped_records(workload: Workload):
     #     {'x': (-inf, 0.5), 'y': (-inf, 50]}, # root.left.right
     # ]
     qdtree.compute_skipped_records(workload)
-    assert root._skipped_records == 6
-    assert root.left._skipped_records == 4
-    assert root.right._skipped_records == 2  # q1
-    assert root.left.left._skipped_records == 0
-    assert root.left.right._skipped_records == 4  # q2 and q3
+    assert root.skipped_records == 6
+    assert root.left.skipped_records == 4
+    assert root.right.skipped_records == 2  # q1
+    assert root.left.left.skipped_records == 0
+    assert root.left.right.skipped_records == 4  # q2 and q3

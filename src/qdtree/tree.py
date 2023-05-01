@@ -80,6 +80,10 @@ class QdTreeNode:
         return self._block
 
     @property
+    def skipped_records(self) -> int:
+        return self._skipped_records
+
+    @property
     def encoding(self) -> np.ndarray:
         return np.concatenate(
             [self._block[attr].encoding for attr in self._context.attributes]
