@@ -201,10 +201,10 @@ class QdTree:
     _context: QdTreeContext
     _root: QdTreeNode
 
-    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 1):
+    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 0):
         self._context = QdTreeContext(
             attributes=list(repo.schema.keys()),
-            min_leaf_size=max(min_leaf_size, 1),
+            min_leaf_size=min_leaf_size,
             leaves=set(),
         )
         block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
