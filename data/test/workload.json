@@ -1,0 +1,37 @@
+{
+  "schema": {
+    "cpu": "int",
+    "disk": "float"
+  },
+  "queries": {
+    "1": {
+      "type": "or",
+      "children": [
+        {
+          "type": "expr",
+          "children": [
+            "cpu",
+            "<",
+            "10"
+          ]
+        },
+        {
+          "type": "expr",
+          "children": [
+            "cpu",
+            ">",
+            "90"
+          ]
+        }
+      ]
+    },
+    "2": {
+      "type": "expr",
+      "children": [
+        "disk",
+        "<",
+        "0.01"
+      ]
+    }
+  }
+}
