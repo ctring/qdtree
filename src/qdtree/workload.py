@@ -1,7 +1,7 @@
 import pprint
 
 from typing import Dict, Literal, List
-from qdtree.cut import CutRepository, Cut, Operator
+from qdtree.cut import CutRepository, Cut
 from qdtree.schema import Schema
 from qdtree.range import Block
 
@@ -49,6 +49,9 @@ class Workload:
         return pprint.pformat(
             {query_id: str(pred) for query_id, pred in self._queries.items()}
         )
+
+    def __len__(self):
+        return len(self._queries)
 
     def __repr__(self):
         return f"Workload({repr(self._schema)}, {repr(self._queries)})"

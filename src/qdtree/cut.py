@@ -1,6 +1,6 @@
 import pandas as pd
 
-from typing import Dict, List, Literal, Optional, Set, Tuple
+from typing import Any, Dict, List, Literal, Optional, Set, Tuple
 
 from qdtree.dictionary import Dictionary
 from qdtree.schema import Schema, SchemaType, SchemaTypeTag
@@ -17,9 +17,10 @@ class Cut:
     a value. Internally, the value is stored as an index into the dictionary.
     """
 
-    __slots__ = ["_dict", "_attr1", "_op", "_attr2_index"]
+    __slots__ = ["_dict", "_attr1", "_op", "_attr2_index", "_id"]
 
     _op: Operator
+    _id: Optional[int]
 
     def __init__(
         self,
@@ -46,6 +47,11 @@ class Cut:
 
     def __repr__(self):
         return self.__str__()
+
+    @property
+    def id(self) -> int:
+        assert self._id is not None
+        return self._id
 
     @property
     def attr1(self) -> str:
@@ -198,6 +204,8 @@ class CutRepository:
         self._dict = dict
         self._cut_index = cut_index
         self._cuts = list(cut_index.values())
+        for i, cut in enumerate(self._cuts):
+            cut._id = i
 
     def __len__(self) -> int:
         return len(self._cuts)
@@ -267,3 +275,25 @@ class CutRepository:
                 for attr1, op, attr2 in self._cuts
             }
             return CutRepository(self._schema, dict, cut_index)
+
+
+class CutTracker:
+    __slots__ = ["_tried_cuts", "_num_tried_cuts", "_num_cuts"]
+
+    def __init__(
+        self,
+        cut_repo: CutRepository,
+    ):
+        self._num_cuts = len(cut_repo)
+        self._tried_cuts = [False] * self._num_cuts
+        self._num_tried_cuts = 0
+
+    def __getitem__(self, index: int) -> bool:
+        return self._tried_cuts[index]
+
+    def set_cut(self, index: int):
+        self._tried_cuts[index] = True
+        self._num_tried_cuts += 1
+
+    def is_done(self) -> int:
+        return self._num_tried_cuts == self._num_cuts

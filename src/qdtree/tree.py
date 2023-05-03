@@ -1,11 +1,11 @@
+import copy
 import pprint
 import numpy as np
 import pandas as pd
 
-from collections import deque
 from typing import List, NamedTuple, Optional, Set, Tuple
 
-from qdtree.cut import Cut, CutRepository
+from qdtree.cut import Cut, CutRepository, CutTracker
 from qdtree.range import RangeWithDict, Block
 from qdtree.workload import Workload
 
@@ -18,12 +18,15 @@ class QdTreeContext(NamedTuple):
 
 class QdTreeNode:
     __slots__ = ["_context", "_id", "_block",
-                 "_data", "_cut", "_left", "_right", "_skipped_records"]
+                 "_data", "_cut", "_left",
+                 "_right", "_skipped_records",
+                 "_cut_tracker"]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
     _skipped_records: int
+    _cut_tracker: CutTracker
 
     def __init__(
         self,
@@ -31,6 +34,7 @@ class QdTreeNode:
         id: int,
         block: Block,
         data: pd.DataFrame,
+        cut_tracker: CutTracker,
     ):
         self._context = context
         self._id = id
@@ -40,6 +44,7 @@ class QdTreeNode:
         self._left = None
         self._right = None
         self._skipped_records = 0
+        self._cut_tracker = cut_tracker
 
         # A new node is always a leaf
         self._context.leaves.add(self)
@@ -99,6 +104,10 @@ class QdTreeNode:
             node_high.append(high)
         return np.concatenate(node_low), np.concatenate(node_high)
 
+    @property
+    def cut_tracker(self) -> CutTracker:
+        return self._cut_tracker
+
     def cut(self, cut: Cut) -> bool:
         """Cut the tree at this node.
 
@@ -107,36 +116,45 @@ class QdTreeNode:
         if self._cut is not None:
             raise RuntimeError("Cut already exists")
 
+        # If the cut has already been tried, return False
+        if self._cut_tracker[cut.id]:
+            return False
+        self._cut_tracker.set_cut(cut.id)
+
         assert cut.attr1 in self._block, f"Attribute {cut.attr1} not in block"
 
         new_block = cut.cut_range(self._block[cut.attr1])
         if new_block is None:
             return False
 
-        true_data = false_data = self._data
+        pos_data = neg_data = self._data
         if len(self._data) > 0:
             cut_eval_true = cut.eval_data(self._data)
-            true_data = self._data[cut_eval_true]
-            false_data = self._data[~cut_eval_true]
+            pos_data = self._data[cut_eval_true]
+            neg_data = self._data[~cut_eval_true]
 
         if (
-            len(true_data) < self._context.min_leaf_size
-            or len(false_data) < self._context.min_leaf_size
+            len(pos_data) < self._context.min_leaf_size
+            or len(neg_data) < self._context.min_leaf_size
         ):
             return False
 
         true_range, false_range = new_block
+
         self._left = QdTreeNode(
             self._context,
             self.id * 2,
             {**self._block, cut.attr1: true_range},
-            true_data,
+            pos_data,
+            copy.deepcopy(self._cut_tracker),
         )
+
         self._right = QdTreeNode(
             self._context,
             self.id * 2 + 1,
             {**self._block, cut.attr1: false_range},
-            false_data,
+            neg_data,
+            copy.deepcopy(self._cut_tracker),
         )
         self._cut = cut
 
@@ -183,26 +201,27 @@ class QdTree:
     _context: QdTreeContext
     _root: QdTreeNode
 
-    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 0):
+    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 1):
         self._context = QdTreeContext(
             attributes=list(repo.schema.keys()),
-            min_leaf_size=min_leaf_size,
+            min_leaf_size=max(min_leaf_size, 1),
             leaves=set(),
         )
         block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
-        self._root = QdTreeNode(self._context, 1, block, data)
+        self._root = QdTreeNode(self._context, 1, block,
+                                data, CutTracker(repo))
 
     def __str__(self):
-        return f"{self._context}\n{self._root}"
+        return f"{self._root}"
 
     def __repr__(self):
         return self.__str__()
 
-    @property
+    @ property
     def root(self) -> QdTreeNode:
         return self._root
 
-    @property
+    @ property
     def blocks(self) -> List[Block]:
         return [node.block for node in self._context.leaves]
 

@@ -55,23 +55,27 @@ def test_qdtree_build_and_route(workload: Workload):
     assert str(root.block["x"]) == "(-inf, inf)"
     assert str(root.block["y"]) == "(-inf, inf)"
     assert root.cut(repo.get("x", "<", "0.5")) == True
+    assert root.cut_tracker._num_tried_cuts == 1
     if True:
         assert root.left is not None
         assert root.left._id == 2
         assert str(root.left.block["x"]) == "(-inf, 0.5)"
         assert str(root.left.block["y"]) == "(-inf, inf)"
         assert root.left.cut(repo.get("y", ">", "50")) == True
+        assert root.left.cut_tracker._num_tried_cuts == 2
         if True:
             assert root.left.left is not None
             assert root.left.left._id == 4
             assert str(root.left.left.block["x"]) == "(-inf, 0.5)"
             assert str(root.left.left.block["y"]) == "(50, inf)"
             assert root.left.left.cut(repo.get("y", ">=", "75")) == True
+            assert root.left.left.cut_tracker._num_tried_cuts == 3
             if True:
                 assert root.left.left.left is not None
                 assert root.left.left.left._id == 8
                 assert str(root.left.left.left.block["x"]) == "(-inf, 0.5)"
                 assert str(root.left.left.left.block["y"]) == "[75, inf)"
+                assert root.left.left.left.cut_tracker._num_tried_cuts == 3
 
                 assert root.left.left.right is not None
                 assert root.left.left.right._id == 9
@@ -79,30 +83,35 @@ def test_qdtree_build_and_route(workload: Workload):
                 assert str(root.left.left.right.block["y"]) == "(50, 75)"
                 assert root.left.left.right.cut(
                     repo.get("y", ">", "50")) == False
+                assert root.left.left.right.cut_tracker._num_tried_cuts == 3
 
             assert root.left.right is not None
             assert root.left.right._id == 5
             assert str(root.left.right.block["x"]) == "(-inf, 0.5)"
             assert str(root.left.right.block["y"]) == "(-inf, 50]"
             assert root.left.right.cut(repo.get("y", ">=", "75")) == False
+            assert root.left.right.cut_tracker._num_tried_cuts == 3
 
         assert root.right is not None
         assert root.right._id == 3
         assert str(root.right.block["x"]) == "[0.5, inf)"
         assert str(root.left.block["y"]) == "(-inf, inf)"
         assert root.right.cut(repo.get("x", "<=", "0.75")) == True
+        assert root.right.cut_tracker._num_tried_cuts == 2
         if True:
             assert root.right.left is not None
             assert root.right.left._id == 6
             assert str(root.right.left.block["x"]) == "[0.5, 0.75]"
             assert str(root.right.left.block["y"]) == "(-inf, inf)"
             assert root.right.left.cut(repo.get("x", "<", "0.5")) == False
+            assert root.right.left.cut_tracker._num_tried_cuts == 2
 
             assert root.right.right is not None
             assert root.right.right._id == 7
             assert str(root.right.right.block["x"]) == "(0.75, inf)"
             assert str(root.right.right.block["y"]) == "(-inf, inf)"
             assert root.right.right.cut(repo.get("x", "<=", "0.75")) == False
+            assert root.right.right.cut_tracker._num_tried_cuts == 2
 
     print(qdtree)
 
@@ -139,6 +148,7 @@ def test_qdtree_min_leaf_size(workload: Workload):
     assert str(root.block["x"]) == "(-inf, inf)"
     assert str(root.block["y"]) == "(-inf, inf)"
     assert root.cut(repo.get("x", "<", "0.5")) == True
+    assert root.cut_tracker._num_tried_cuts == 1
     if True:
         assert root.left is not None
         assert root.left._id == 2
@@ -146,6 +156,7 @@ def test_qdtree_min_leaf_size(workload: Workload):
         assert str(root.left.block["x"]) == "(-inf, 0.5)"
         assert str(root.left.block["y"]) == "(-inf, inf)"
         assert root.left.cut(repo.get("y", ">", "50")) == True
+        assert root.left.cut_tracker._num_tried_cuts == 2
         if True:
             assert root.left.left is not None
             assert root.left.left._id == 4
@@ -153,6 +164,7 @@ def test_qdtree_min_leaf_size(workload: Workload):
             assert str(root.left.left.block["x"]) == "(-inf, 0.5)"
             assert str(root.left.left.block["y"]) == "(50, inf)"
             assert root.left.left.cut(repo.get("y", ">=", "75")) == False
+            assert root.left.left.cut_tracker._num_tried_cuts == 3
 
             assert root.left.right is not None
             assert root.left.right._id == 5
@@ -160,6 +172,7 @@ def test_qdtree_min_leaf_size(workload: Workload):
             assert str(root.left.right.block["x"]) == "(-inf, 0.5)"
             assert str(root.left.right.block["y"]) == "(-inf, 50]"
             assert root.left.right.cut(repo.get("y", ">=", "75")) == False
+            assert root.left.right.cut_tracker._num_tried_cuts == 3
 
         assert root.right is not None
         assert root.right._id == 3
@@ -167,6 +180,7 @@ def test_qdtree_min_leaf_size(workload: Workload):
         assert str(root.right.block["x"]) == "[0.5, inf)"
         assert str(root.left.block["y"]) == "(-inf, inf)"
         assert root.right.cut(repo.get("x", "<=", "0.75")) == False
+        assert root.right.cut_tracker._num_tried_cuts == 2
 
     print(qdtree)
 
