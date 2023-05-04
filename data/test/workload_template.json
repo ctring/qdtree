@@ -1,0 +1,29 @@
+{
+  "schema": {
+    "cpu": "int",
+    "disk": "float"
+  },
+  "queries": {
+    "1": {
+      "predicate": {
+        "type": "or",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["cpu", "<", "$rand_int(0, 50)"]
+          },
+          {
+            "type": "expr",
+            "children": ["cpu", ">", "$rand_int(50, 100)"]
+          }
+        ]
+      }
+    },
+    "2": {
+      "predicate": {
+        "type": "expr",
+        "children": ["disk", "<", "$rand_float(0, 1)"]
+      }
+    }
+  }
+}

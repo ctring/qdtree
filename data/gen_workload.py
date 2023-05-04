@@ -1,19 +1,50 @@
 # Example usage:
-#   python3 gen_workload.py tpc-h/workload_template.json tpc-h/queries --out tpc-h/workload.json
+#   python3 gen_workload.py tpc-h/workload_template.json --queries tpc-h/queries --out tpc-h/workload.json
 #
 import argparse
 import datetime
 import copy
 import json
 import os
+import random
 import re
+from typing import Optional
 
 from dateutil.relativedelta import relativedelta
 
 
-def process_value(val, match):
-    # Replace $1, $2, ... with the corresponding match group
-    val = re.sub(r"\$([0-9]+)", lambda m: match.group(int(m.group(1))), val)
+def process_value(val: str, match: Optional[re.Match]):
+    # Replace $rand_int(min, max) with a random integer in [min, max]
+    val = re.sub(
+        r"\$rand_int\(([0-9]+), ([0-9]+)\)",
+        lambda m: str(random.randint(int(m.group(1)), int(m.group(2)))),
+        val,
+    )
+
+    # Replace $rand_float(min, max) with a random float in [min, max]
+    val = re.sub(
+        r"\$rand_float\(([0-9]+), ([0-9]+)\)",
+        lambda m: f"{random.uniform(int(m.group(1)), int(m.group(2))):.2f}",
+        val,
+    )
+
+    # Replace $rand_date(min, max) with a random date in [min, max]
+    val = re.sub(
+        r"\$rand_date\('([0-9-]+)', '([0-9-]+)'\)",
+        lambda m: str(
+            datetime.datetime.fromtimestamp(
+                random.randint(
+                    int(datetime.datetime.strptime(m.group(1), "%Y-%m-%d").timestamp()),
+                    int(datetime.datetime.strptime(m.group(2), "%Y-%m-%d").timestamp()),
+                )
+            ).strftime("%Y-%m-%d")
+        ),
+        val,
+    )
+
+    if match:
+        # Replace $1, $2, ... with the corresponding match group
+        val = re.sub(r"\$([0-9]+)", lambda m: match.group(int(m.group(1))), val)
 
     # Compute the date expression if any
     date_expr_match = re.search(
@@ -38,7 +69,7 @@ def process_value(val, match):
     return val
 
 
-def substitute_predicate(node, match):
+def substitute_predicate(node, match: Optional[re.Match]):
     node_type = node["type"]
     children = node["children"]
     if node_type in ["and", "or"]:
@@ -52,7 +83,10 @@ def substitute_predicate(node, match):
 
 parser = argparse.ArgumentParser()
 parser.add_argument("template", help="the json file containing the workload template")
-parser.add_argument("queries", help="directory containing the queries")
+parser.add_argument("--queries", help="directory containing the queries")
+parser.add_argument(
+    "-n", "--num-queries", type=int, help="number of queries to generate per template"
+)
 parser.add_argument(
     "-o", "--output", default="workload.json", help="path to the output file"
 )
@@ -65,21 +99,33 @@ workload = {
     "schema": template["schema"],
     "queries": {},
 }
-queries = os.listdir(args.queries)
 
-# Iterate over the query template and extract the predicates
-for k, value in template["queries"].items():
-    target_queries = [q for q in queries if q.startswith(f"{k}.")]
-    regex = value["regex"]
-    for q in target_queries:
-        # Read and clean the query
-        with open(os.path.join(args.queries, q), "r") as f:
-            query = " ".join(f.read().split())
-        match = re.search(regex, query)
-        if match:
+if args.queries and args.num_queries:
+    raise ValueError("Cannot specify both --queries and --num-queries")
+
+if args.queries:
+    queries = os.listdir(args.queries)
+
+    # Iterate over the query template and extract the predicates
+    for k, value in template["queries"].items():
+        target_queries = [q for q in queries if q.startswith(f"{k}.")]
+        regex = value["regex"]
+        for q in target_queries:
+            # Read and clean the query
+            with open(os.path.join(args.queries, q), "r") as f:
+                query = " ".join(f.read().split())
+            match = re.search(regex, query)
+            if match:
+                new_predicate = copy.deepcopy(value["predicate"])
+                substitute_predicate(new_predicate, match)
+                workload["queries"][q] = new_predicate
+else:
+    for k, value in template["queries"].items():
+        for i in range(args.num_queries):
             new_predicate = copy.deepcopy(value["predicate"])
-            substitute_predicate(new_predicate, match)
-            workload["queries"][q] = new_predicate
+            substitute_predicate(new_predicate, None)
+            workload["queries"][f"{k}.{i}"] = new_predicate
+
 
 with open(args.output, "w") as f:
     json.dump(workload, f, indent=2)
