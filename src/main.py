@@ -22,12 +22,15 @@ import ray
 from ray import air, tune
 from ray.rllib.env.env_context import EnvContext
 from ray.rllib.models import ModelCatalog
+from ray.rllib.policy.sample_batch import DEFAULT_POLICY_ID
+from ray.rllib.policy.policy import PolicySpec
 from ray.rllib.utils.test_utils import check_learning_achieved
 from ray.tune.logger import pretty_print
 from ray.tune.registry import get_trainable_cls
 
 from env import QdTreeEnv
 from model import CustomModel, TorchCustomModel
+from policy import QdTreePolicy
 from qdtree import Workload
 
 parser = argparse.ArgumentParser()
@@ -106,74 +109,59 @@ if __name__ == "__main__":
             "min_leaf_size": args.min_leaf_size,
         })
         .framework(args.framework)
-        .rollouts(num_rollout_workers=1)
+        .rollouts(num_rollout_workers=1, batch_mode="complete_episodes")
         .training(
             model={
                 "custom_model": "my_model",
                 "vf_share_layers": True,
             }
         )
+        .multi_agent(policies={
+            DEFAULT_POLICY_ID: PolicySpec(policy_class=QdTreePolicy)
+        })
         # Use GPUs iff `RLLIB_NUM_GPUS` env var set to > 0.
         .resources(num_gpus=int(os.environ.get("RLLIB_NUM_GPUS", "0")))
     )
 
     algo = config.build()
-    env = QdTreeEnv(EnvContext({
-        "workload": workload,
-        "data": data,
-        "min_leaf_size": args.min_leaf_size,
-    }, 0))
-    obs, _ = env.reset()
-    print(env.render())
-    for i in range(1000):
-        action = algo.compute_single_action(obs)
-        print("Taking cut: ", workload.cut_repo[action])
-        obs, reward, done, _, info = env.step(action)
-        print("Iteration:", i)
-        print(env.render())
-        if done:
-            print("All done!")
-            break
 
-    print(env.queue)
+    stop = {
+        "training_iteration": args.stop_iters,
+        "timesteps_total": args.stop_timesteps,
+        "episode_reward_mean": args.stop_reward,
+    }
 
-    # stop = {
-    #     "training_iteration": args.stop_iters,
-    #     "timesteps_total": args.stop_timesteps,
-    #     "episode_reward_mean": args.stop_reward,
-    # }
+    if args.no_tune:
+        # manual training with train loop using PPO and fixed learning rate
+        if args.run != "PPO":
+            raise ValueError("Only support --run PPO with --no-tune.")
+        print("Running manual train loop without Ray Tune.")
+        # use fixed learning rate instead of grid search (needs tune)
+        config.lr = 1e-3
+        algo = config.build()
+        # run manual training loop and print results after each iteration
+        for _ in range(args.stop_iters):
+            result = algo.train()
+            print(pretty_print(result))
+            # stop training of the target train steps or reward are reached
+            if (
+                result["timesteps_total"] >= args.stop_timesteps
+                or result["episode_reward_mean"] >= args.stop_reward
+            ):
+                break
+        algo.stop()
+    else:
+        # automated run with Tune and grid search and TensorBoard
+        print("Training automatically with Ray Tune")
+        tuner = tune.Tuner(
+            args.run,
+            param_space=config.to_dict(),
+            run_config=air.RunConfig(stop=stop),
+        )
+        results = tuner.fit()
 
-    # if args.no_tune:
-    #     # manual training with train loop using PPO and fixed learning rate
-    #     if args.run != "PPO":
-    #         raise ValueError("Only support --run PPO with --no-tune.")
-    #     print("Running manual train loop without Ray Tune.")
-    #     # use fixed learning rate instead of grid search (needs tune)
-    #     config.lr = 1e-3
-    #     algo = config.build()
-    #     # run manual training loop and print results after each iteration
-    #     for _ in range(args.stop_iters):
-    #         result = algo.train()
-    #         print(pretty_print(result))
-    #         # stop training of the target train steps or reward are reached
-    #         if (
-    #             result["timesteps_total"] >= args.stop_timesteps
-    #             or result["episode_reward_mean"] >= args.stop_reward
-    #         ):
-    #             break
-    #     algo.stop()
-    # else:
-    #     # automated run with Tune and grid search and TensorBoard
-    #     print("Training automatically with Ray Tune")
-    #     tuner = tune.Tuner(
-    #         args.run,
-    #         param_space=config.to_dict(),
-    #         run_config=air.RunConfig(stop=stop),
-    #     )
-    #     results = tuner.fit()
+        if args.as_test:
+            print("Checking if learning goals were achieved")
+            check_learning_achieved(results, args.stop_reward)
 
-    #     if args.as_test:
-    #         print("Checking if learning goals were achieved")
-    #         check_learning_achieved(results, args.stop_reward)
-
-    # ray.shutdown()
+    ray.shutdown()

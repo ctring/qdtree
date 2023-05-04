@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from collections import deque
-from typing import Deque, List
+from typing import Deque, List, Optional
 from gymnasium.spaces import Discrete, Box
 from ray.rllib.env.env_context import EnvContext
 
@@ -20,7 +20,8 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
     qd_tree: QdTree
     cur_node: QdTreeNode
     queue: Deque[QdTreeNode]
-    node_history: List[QdTreeNode]
+    node_history: List[Optional[QdTreeNode]]
+    done: bool
 
     def __init__(self, config: EnvContext):
         # Extract the configuration.
@@ -45,14 +46,15 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
         self.cur_node = self.qd_tree.root
         self.queue = deque()
         self.node_history = [self.cur_node]
+        self.done = False
 
         return self.cur_node.encoding, {}
 
     def step(self, action: int):
-        assert self.cur_node is not None
+        if self.done:
+            return self.cur_node.encoding, 0, True, False, {}
 
         cut = self.workload.cut_repo[action]
-        done = False
         pop_next_node = False
 
         # Make a cut and add the new nodes to the queue for later visits.
@@ -72,12 +74,27 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
                 self.cur_node = self.queue.popleft()
                 self.node_history.append(self.cur_node)
             else:
-                done = True
+                # No more node to explore. We don't return self.done immediately
+                # from here, but just set this variable to True and return it in
+                # the next step() call. This is because rllib does not register
+                # the info of the last step, so we add an additional step at the
+                # end to return the info properly.
+                self.done = True
+        else:
+            self.node_history.append(None)
 
         obs = self.cur_node.encoding
-        rewards = self._compute_rewards() if done else None
+        info = {}
+        reward = 0
+        if self.done:
+            info["rewards"] = self._compute_rewards()
+            reward = info["rewards"][0]  # type: ignore
 
-        return (obs, 0, done, False, {"rewards": rewards})
+        # Note that we don't return self.done here for the terminated entry
+        # The reward returned here is only used for metrics summary and not
+        # for training the policy. The actual rewards are returned as part of
+        # the info dict.
+        return obs, reward, False, False, info
 
     def render(self):
         return str(self.qd_tree)
@@ -85,51 +102,11 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
     def _compute_rewards(self):
         """Compute the rewards for each node in the tree."""
         self.qd_tree.compute_skipped_records(self.workload)
-        rewards = []
-        for node in self.node_history:
-            reward = node.skipped_records / (len(node) * len(self.workload))
-            rewards.append(reward)
+        rewards = np.array([
+            (
+                node.skipped_records / (len(node) * len(self.workload))
+                if node else 0
+            )
+            for node in self.node_history
+        ] + [0])   # Append a reward for the last action, which is only a dummy
         return rewards
-
-
-# if __name__ == "__main__":
-#     schema: Schema = {
-#         "x": "float",
-#         "y": "int",
-#     }
-
-#     builder = CutRepository.Builder(schema)
-#     builder.add("x", "<", "0.5")
-#     builder.add("y", ">=", "10")
-#     builder.add("x", ">", "40")
-#     builder.add("y", "<=", "50")
-#     builder.add("y", ">", "8")
-
-#     repo = builder.build()
-
-#     config = EnvContext(
-#         {
-#             "cut_repo": repo,
-#             "data": pd.DataFrame(
-#                 [
-#                     {"x": 0.2, "y": 10},
-#                     {"x": 0.4, "y": 20},
-#                     {"x": 0.6, "y": 30},
-#                     {"x": 0.8, "y": 40},
-#                 ]
-#             ),
-#             "min_leaf_size": 2,
-#         },
-#         0,
-#     )
-
-#     env = QdTreeEnv(config)
-
-#     init, _ = env.reset()
-#     print(env.render())
-
-#     env.step(0)
-#     print(env.render())
-
-#     env.step(1)
-#     print(env.render())
