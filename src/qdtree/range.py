@@ -9,7 +9,7 @@ from qdtree.schema import SchemaType
 class Range:
     """A range of attribute values.
 
-    A range can be open or closed on either side. 
+    A range can be open or closed on either side.
     """
 
     __slots__ = ["_left", "_right", "_open_left", "_open_right"]
@@ -54,13 +54,11 @@ class Range:
         return self._open_right
 
     def overlaps(self, other: "Range") -> bool:
-        cond1 = (
-            self.left < other.right or  # type: ignore
-            (self.left == other.right and not self.open_left and not other.open_right)
+        cond1 = self.left < other.right or (  # type: ignore
+            self.left == other.right and not self.open_left and not other.open_right
         )
-        cond2 = (
-            other.left < self.right or  # type: ignore
-            (other.left == self.right and not other.open_left and not self.open_right)
+        cond2 = other.left < self.right or (  # type: ignore
+            other.left == self.right and not other.open_left and not self.open_right
         )
         return cond1 and cond2
 
@@ -97,8 +95,12 @@ class RangeWithDict(Range):
     @property
     def encoding(self) -> np.ndarray:
         return np.array(
-            [self._left_index, self._right_index, int(
-                self._open_left), int(self._open_right)]
+            [
+                self._left_index,
+                self._right_index,
+                int(self._open_left),
+                int(self._open_right),
+            ]
         )
 
     @property

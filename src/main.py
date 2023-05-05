@@ -59,7 +59,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"Running with following CLI options: {args}")
 
-    with open(args.workload) as f:
+    with open(args.workload, "r") as f:
         workload = Workload(json.load(f))
 
     if args.data.endswith(".csv"):
