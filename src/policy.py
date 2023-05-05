@@ -12,10 +12,11 @@ class QdTreePolicy(PPOTorchPolicy):
         info = sample_batch[SampleBatch.INFOS][-1]
         if isinstance(info, dict):
             if "rewards" not in info:
-                raise RuntimeError("Cannot find \"rewards\" in the info dict. This means the episode has been truncated."
-                                   "Set batch_mode of the rollouts config to complete_episodes to avoid this error.")
-            assert len(sample_batch[SampleBatch.REWARDS]
-                       ) == len(info["rewards"])
+                raise RuntimeError(
+                    'Cannot find "rewards" in the info dict. This means the episode has been truncated.'
+                    "Set batch_mode of the rollouts config to complete_episodes to avoid this error."
+                )
+            assert len(sample_batch[SampleBatch.REWARDS]) == len(info["rewards"])
             sample_batch[SampleBatch.REWARDS] = info["rewards"]
 
         # Copied from postprocess_trajectory of PPOTorchPolicy

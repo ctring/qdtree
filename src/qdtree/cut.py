@@ -104,7 +104,9 @@ class Cut:
         pos_range, _ = res
         return pos_range.overlaps(range)
 
-    def cut_range(self, range: RangeWithDict) -> Optional[Tuple["RangeWithDict", "RangeWithDict"]]:
+    def cut_range(
+        self, range: RangeWithDict
+    ) -> Optional[Tuple["RangeWithDict", "RangeWithDict"]]:
         """Cut a range.
 
         Args:
@@ -206,6 +208,9 @@ class CutRepository:
         self._cuts = list(cut_index.values())
         for i, cut in enumerate(self._cuts):
             cut._id = i
+
+    def __repr__(self):
+        return f"{self._cuts}"
 
     def __len__(self) -> int:
         return len(self._cuts)

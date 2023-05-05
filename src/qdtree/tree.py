@@ -17,10 +17,17 @@ class QdTreeContext(NamedTuple):
 
 
 class QdTreeNode:
-    __slots__ = ["_context", "_id", "_block",
-                 "_data", "_cut", "_left",
-                 "_right", "_skipped_records",
-                 "_cut_tracker"]
+    __slots__ = [
+        "_context",
+        "_id",
+        "_block",
+        "_data",
+        "_cut",
+        "_left",
+        "_right",
+        "_skipped_records",
+        "_cut_tracker",
+    ]
 
     _cut: Optional[Cut]
     _left: Optional["QdTreeNode"]
@@ -50,23 +57,30 @@ class QdTreeNode:
         self._context.leaves.add(self)
 
     def __str__(self):
-        return pprint.pformat(self.__dict__(), sort_dicts=False)
+        return pprint.pformat(self.__dict__(with_children=True), sort_dicts=False)
 
     def __repr__(self):
-        return self.__str__()
+        return pprint.pformat(self.__dict__(with_children=False), sort_dicts=False)
 
     def __len__(self):
         return len(self._data)
 
-    def __dict__(self):
-        return {
+    def __dict__(self, with_children):
+        d = {
             "id": self._id,
             "cut": self._cut,
             "size": len(self),
             "block": self._block,
-            "left": self._left.__dict__() if self._left is not None else None,
-            "right": self._right.__dict__() if self._right is not None else None,
+            "skipped_records": self._skipped_records,
         }
+        if with_children:
+            d["left"] = (
+                self._left.__dict__(with_children) if self._left is not None else None
+            )
+            d["right"] = (
+                self._right.__dict__(with_children) if self._right is not None else None
+            )
+        return d
 
     @property
     def id(self) -> int:
@@ -192,7 +206,9 @@ class QdTreeNode:
         self._left.compute_skipped_records()
         self._right.compute_skipped_records()
 
-        self._skipped_records = self._left._skipped_records + self._right._skipped_records
+        self._skipped_records = (
+            self._left._skipped_records + self._right._skipped_records
+        )
 
 
 class QdTree:
@@ -201,15 +217,19 @@ class QdTree:
     _context: QdTreeContext
     _root: QdTreeNode
 
-    def __init__(self, repo: CutRepository, data: pd.DataFrame = pd.DataFrame(), min_leaf_size: int = 0):
+    def __init__(
+        self,
+        repo: CutRepository,
+        data: pd.DataFrame = pd.DataFrame(),
+        min_leaf_size: int = 0,
+    ):
         self._context = QdTreeContext(
             attributes=list(repo.schema.keys()),
             min_leaf_size=min_leaf_size,
             leaves=set(),
         )
         block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
-        self._root = QdTreeNode(self._context, 1, block,
-                                data, CutTracker(repo))
+        self._root = QdTreeNode(self._context, 1, block, data, CutTracker(repo))
 
     def __str__(self):
         return f"{self._root}"
@@ -217,11 +237,11 @@ class QdTree:
     def __repr__(self):
         return self.__str__()
 
-    @ property
+    @property
     def root(self) -> QdTreeNode:
         return self._root
 
-    @ property
+    @property
     def blocks(self) -> List[Block]:
         return [node.block for node in self._context.leaves]
 
@@ -236,8 +256,9 @@ class QdTree:
         """Compute the number of skipped records for each node in the tree."""
         # Populate the number of skipped records for the leaves
         for node in self._context.leaves:
-            node._skipped_records = workload.num_queries_can_skip(
-                node.block) * len(node)
+            node._skipped_records = workload.num_queries_can_skip(node.block) * len(
+                node
+            )
 
         # Recursively compute the results for the inner nodes
         self._root.compute_skipped_records()

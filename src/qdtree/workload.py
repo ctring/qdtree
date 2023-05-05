@@ -76,8 +76,7 @@ class Predicate:
     def from_dict(pred, repo: CutRepository) -> "Predicate":
         typ = pred["type"]
         if typ in ["and", "or"]:
-            children = [Predicate.from_dict(child, repo)
-                        for child in pred["children"]]
+            children = [Predicate.from_dict(child, repo) for child in pred["children"]]
             return BoolOp(typ, children)
         elif typ == "expr":
             attr1, op, attr2 = pred["children"]
