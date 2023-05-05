@@ -15,11 +15,15 @@ from ray.tune.registry import get_trainable_cls
 from env import QdTreeEnv
 from policy import QdTreePolicy
 from qdtree import Workload
+from qdtree.schema import ensure_data_schema
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--workload", type=str, required=True, help="Workload json file.")
 parser.add_argument(
     "--data", type=str, required=True, help="Data file. Can be csv or parquet."
+)
+parser.add_argument(
+    "--sample-pct", type=float, default=1.0, help="Percentage of data to sample."
 )
 parser.add_argument(
     "--min-leaf-size", type=int, required=True, help="Minimum leaf size for QdTree."
@@ -62,12 +66,19 @@ if __name__ == "__main__":
     with open(args.workload, "r") as f:
         workload = Workload(json.load(f))
 
+    print("Loading data...")
     if args.data.endswith(".csv"):
         data = pd.read_csv(args.data)
     elif args.data.endswith(".parquet"):
         data = pd.read_parquet(args.data)
     else:
         raise ValueError("Data file must be csv or parquet.")
+    print("Data loaded.")
+
+    if args.sample_pct < 1.0:
+        data = data.sample(frac=args.sample_pct)
+    data.columns = data.columns.str.lower()
+    data = ensure_data_schema(data, workload.schema)
 
     ray.init(local_mode=args.local_mode)
 
