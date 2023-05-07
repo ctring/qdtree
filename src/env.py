@@ -62,8 +62,6 @@ class QdTreeEnv(gym.Env[np.ndarray, int]):
             self.queue.append(self.cur_node.right)
         # If the cut is not possible, then check if we are done with the current
         # node yet. If not, then add the current node to the queue again
-        elif not self.cur_node.cut_tracker.is_done():
-            self.queue.append(self.cur_node)
 
         if len(self.queue) > 0:
             self.cur_node = self.queue.popleft()

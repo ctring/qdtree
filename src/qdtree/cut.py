@@ -280,25 +280,3 @@ class CutRepository:
                 for attr1, op, attr2 in self._cuts
             }
             return CutRepository(self._schema, dict, cut_index)
-
-
-class CutTracker:
-    __slots__ = ["_tried_cuts", "_num_tried_cuts", "_num_cuts"]
-
-    def __init__(
-        self,
-        cut_repo: CutRepository,
-    ):
-        self._num_cuts = len(cut_repo)
-        self._tried_cuts = [False] * self._num_cuts
-        self._num_tried_cuts = 0
-
-    def __getitem__(self, index: int) -> bool:
-        return self._tried_cuts[index]
-
-    def set_cut(self, index: int):
-        self._tried_cuts[index] = True
-        self._num_tried_cuts += 1
-
-    def is_done(self) -> int:
-        return self._num_tried_cuts == self._num_cuts

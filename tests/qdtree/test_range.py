@@ -9,8 +9,8 @@ def test_range_overlaps():
     range1 = Range(10, 30, open_left=False, open_right=False)  # [10, 30]
     range2 = Range(20, 30, open_left=True, open_right=False)  # (20, 30]
     range3 = Range(20, 30, open_left=False, open_right=False)  # [20, 30]
-    range4 = Range(10, 20, open_left=True, open_right=True)   # (10, 20)
-    range5 = Range(0, 10, open_left=True, open_right=True)    # (0, 10]
+    range4 = Range(10, 20, open_left=True, open_right=True)  # (10, 20)
+    range5 = Range(0, 10, open_left=True, open_right=True)  # (0, 10]
 
     assert range_inf.overlaps(range0)
     assert range_inf.overlaps(range1)

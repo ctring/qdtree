@@ -5,7 +5,7 @@ import pandas as pd
 
 from typing import List, NamedTuple, Optional, Set, Tuple
 
-from qdtree.cut import Cut, CutRepository, CutTracker
+from qdtree.cut import Cut, CutRepository
 from qdtree.range import RangeWithDict, Block
 from qdtree.workload import Workload
 
@@ -33,7 +33,6 @@ class QdTreeNode:
     _left: Optional["QdTreeNode"]
     _right: Optional["QdTreeNode"]
     _skipped_records: int
-    _cut_tracker: CutTracker
 
     def __init__(
         self,
@@ -41,7 +40,6 @@ class QdTreeNode:
         id: int,
         block: Block,
         data: pd.DataFrame,
-        cut_tracker: CutTracker,
     ):
         self._context = context
         self._id = id
@@ -51,7 +49,6 @@ class QdTreeNode:
         self._left = None
         self._right = None
         self._skipped_records = 0
-        self._cut_tracker = cut_tracker
 
         # A new node is always a leaf
         self._context.leaves.add(self)
@@ -118,10 +115,6 @@ class QdTreeNode:
             node_high.append(high)
         return np.concatenate(node_low), np.concatenate(node_high)
 
-    @property
-    def cut_tracker(self) -> CutTracker:
-        return self._cut_tracker
-
     def cut(self, cut: Cut) -> bool:
         """Cut the tree at this node.
 
@@ -129,11 +122,6 @@ class QdTreeNode:
         """
         if self._cut is not None:
             raise RuntimeError("Cut already exists")
-
-        # If the cut has already been tried, return False
-        if self._cut_tracker[cut.id]:
-            return False
-        self._cut_tracker.set_cut(cut.id)
 
         assert cut.attr1 in self._block, f"Attribute {cut.attr1} not in block"
 
@@ -160,7 +148,6 @@ class QdTreeNode:
             self.id * 2,
             {**self._block, cut.attr1: true_range},
             pos_data,
-            copy.deepcopy(self._cut_tracker),
         )
 
         self._right = QdTreeNode(
@@ -168,7 +155,6 @@ class QdTreeNode:
             self.id * 2 + 1,
             {**self._block, cut.attr1: false_range},
             neg_data,
-            copy.deepcopy(self._cut_tracker),
         )
         self._cut = cut
 
@@ -229,7 +215,7 @@ class QdTree:
             leaves=set(),
         )
         block = {attr: RangeWithDict(repo.dict) for attr in repo.schema}
-        self._root = QdTreeNode(self._context, 1, block, data, CutTracker(repo))
+        self._root = QdTreeNode(self._context, 1, block, data)
 
     def __str__(self):
         return f"{self._root}"
