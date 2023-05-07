@@ -73,10 +73,12 @@ if __name__ == "__main__":
         data = pd.read_parquet(args.data)
     else:
         raise ValueError("Data file must be csv or parquet.")
-    print("Data loaded.")
+    print(f"Loaded {len(data)} rows.")
 
     if args.sample_pct < 1.0:
         data = data.sample(frac=args.sample_pct)
+        print(f"Sampled {len(data)} rows.")
+
     data.columns = data.columns.str.lower()
     data = ensure_data_schema(data, workload.schema)
 
@@ -97,9 +99,9 @@ if __name__ == "__main__":
         .rollouts(num_rollout_workers=1, batch_mode="complete_episodes")
         .training(
             model={
-                "fcnet_hiddens": [256, 256],
+                "fcnet_hiddens": [512, 512],
                 "fcnet_activation": "relu",
-                "vf_share_layers": False,
+                # "vf_share_layers": True,
             }
         )
         .multi_agent(
@@ -142,7 +144,11 @@ if __name__ == "__main__":
         tuner = tune.Tuner(
             args.run,
             param_space=config.to_dict(),
-            run_config=air.RunConfig(stop=stop),
+            run_config=air.RunConfig(
+                local_dir="./results",
+                stop=stop,
+                checkpoint_config=air.CheckpointConfig(checkpoint_at_end=True),
+            ),
         )
         results = tuner.fit()
 

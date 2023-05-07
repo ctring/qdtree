@@ -94,22 +94,24 @@ class RangeWithDict(Range):
 
     @property
     def encoding(self) -> np.ndarray:
-        return np.array(
-            [
-                self._left_index,
-                self._right_index,
-                int(self._open_left),
-                int(self._open_right),
-            ]
+        binarized = np.unpackbits(
+            np.frombuffer(
+                self._left_index.to_bytes(Dictionary.INDEX_BYTES, "big")
+                + self._right_index.to_bytes(Dictionary.INDEX_BYTES, "big"),
+                dtype=np.uint8,
+            )
+        )
+        return np.concatenate(
+            [binarized, [int(self._open_left), int(self._open_right)]]
         )
 
     @property
     def encoding_space(self) -> Tuple[np.ndarray, np.ndarray]:
-        dict_min_index = self._dict.min_index()
-        dict_max_index = self._dict.max_index()
+        # Each range has 2 binarized number and 2 bits for open/closed
+        dim = 2 * Dictionary.INDEX_BYTES * 8 + 2
         return (
-            np.array([dict_min_index, dict_min_index, 0, 0]),
-            np.array([dict_max_index, dict_max_index, 1, 1]),
+            np.array([0] * dim),
+            np.array([1] * dim),
         )
 
 

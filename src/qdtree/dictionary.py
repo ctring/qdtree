@@ -9,11 +9,14 @@ class Dictionary:
     _values: List[SchemaType]
     _values_str: Dict[str, int]
 
-    INF = -1
-    NINF = -2
+    INDEX_BYTES = 2
+
+    INF = 2 ** (INDEX_BYTES * 8) - 1
+    NINF = 2 ** (INDEX_BYTES * 8) - 2
 
     def __init__(self, values: Iterable[Tuple[str, SchemaTypeTag]]):
         self._values = [cast_to_type(value, typ) for value, typ in values]
+        assert len(self._values) < min(Dictionary.INF, Dictionary.NINF)
         self._values_str = {value: i for i, (value, _) in enumerate(values)}
 
     def __getitem__(self, index: int) -> SchemaType:
