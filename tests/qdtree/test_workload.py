@@ -149,3 +149,4 @@ def test_predicate_can_skip(workload: Workload, qdtree: QdTree):
     assert workload.num_queries_can_skip(blocks[3]) == 1
     assert workload.num_queries_can_skip(blocks[4]) == 0
     assert workload.num_queries_can_skip(blocks[5]) == 1
+
