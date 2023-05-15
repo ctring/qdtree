@@ -66,6 +66,24 @@ def process_value(val: str, match: Optional[re.Match]):
         date = doop(date, op, relativedelta(**{unit + "s": int(delta)}))
         val = f"{date.strftime(DATE_FORMAT)}"
 
+    # Compute the arithmetic expression if any
+    arith_expr_match = re.search(r"([0-9.]+) ([+-/*]) ([0-9.]+)", val)
+    if arith_expr_match:
+        left, op, right = arith_expr_match.groups()
+        left = float(left)
+        right = float(right)
+        if op == "+":
+            res = left + right
+        elif op == "-":
+            res = left - right
+        elif op == "*":
+            res = left * right
+        elif op == "/":
+            res = left / right
+        else:
+            raise ValueError(f"Unknown operator: {op}")
+        val = f"{res:.2f}"
+
     return val
 
 
