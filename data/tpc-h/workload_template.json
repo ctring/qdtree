@@ -97,7 +97,7 @@
       }
     },
     "6": {
-      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' + interval '1' year and l_discount >= '([0-9-]+)' and l_discount < '([0-9-]+)' and l_quantity < '([0-9-]+)'",
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' year and l_discount >= '([0-9-]+)' and l_discount < '([0-9-]+)' and l_quantity < '([0-9-]+)'",
       "predicate": {
         "type": "and",
         "children": [
@@ -157,7 +157,7 @@
       }
     },
     "10": {
-      "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)' + interval '3' month",
+      "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)' \\+ interval '3' month",
       "predicate": {
         "type": "and",
         "children": [
@@ -173,7 +173,7 @@
       }
     },
     "12": {
-      "regex": "l_commitdate < l_receiptdate and l_shipdate < l_commitdate and l_receiptdate >= date '([0-9-]+)' and l_receiptdate < date '([0-9-]+)' + interval '1' year",
+      "regex": "l_receiptdate >= date '([0-9-]+)' and l_receiptdate < date '([0-9-]+)' \\+ interval '1' year",
       "predicate": {
         "type": "and",
         "children": [
@@ -189,7 +189,7 @@
       }
     },
     "14": {
-      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' + interval '1' month",
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' month",
       "predicate": {
         "type": "and",
         "children": [
@@ -205,7 +205,7 @@
       }
     },
     "15": {
-      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' + interval '3' month",
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '3' month",
       "predicate": {
         "type": "and",
         "children": [
@@ -245,7 +245,7 @@
       }
     },
     "20": {
-      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' + interval '1' year",
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' year",
       "predicate": {
         "type": "and",
         "children": [
