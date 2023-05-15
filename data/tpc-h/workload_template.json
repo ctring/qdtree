@@ -75,7 +75,187 @@
           },
           {
             "type": "expr",
-            "children": ["o_orderdate", "<", "date '$1' + interval '3' month"]
+            "children": ["o_orderdate", "<", "date '$2' + interval '3' month"]
+          }
+        ]
+      }
+    },
+    "5": {
+      "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)' \\+ interval '1' year",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["o_orderdate", ">=", "$1"]
+          },
+          {
+            "type": "expr",
+            "children": ["o_orderdate", "<", "date '$2' + interval '1' year"]
+          }
+        ]
+      }
+    },
+    "6": {
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' year and l_discount >= '([0-9-]+)' and l_discount < '([0-9-]+)' and l_quantity < '([0-9-]+)'",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_shipdate", ">=", "$1"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_shipdate", "<", "date '$2' + interval '1' year"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_discount", ">=", "'$3'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_discount", "<", "'$4'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_quantity", "<", "'$5'"]
+          }
+        ]
+      }
+    },
+    "7": {
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)'",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_shipdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_shipdate", "<", "date '$2'"]
+          }
+        ]
+      }
+    },
+    "8": {
+      "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)'",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["o_orderdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["o_orderdate", "<", "date '$2'"]
+          }
+        ]
+      }
+    },
+    "10": {
+      "regex": "o_orderdate >= date '([0-9-]+)' and o_orderdate < date '([0-9-]+)' \\+ interval '3' month",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["o_orderdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["o_orderdate", "<", "date '$2' + interval '3' month"]
+          }
+        ]
+      }
+    },
+    "12": {
+      "regex": "l_receiptdate >= date '([0-9-]+)' and l_receiptdate < date '([0-9-]+)' \\+ interval '1' year",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_receiptdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_receiptdate", "<", "date '$2' + interval '1' year"]
+          }
+        ]
+      }
+    },
+    "14": {
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' month",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_shipdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_shipdate", "<", "date '$2' + interval '1' month"]
+          }
+        ]
+      }
+    },
+    "15": {
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '3' month",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_shipdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_shipdate", "<", "date '$2' + interval '3' month"]
+          }
+        ]
+      }
+    },
+    "19": {
+      "regex": "(l_quantity >= '([0-9-]+)' and l_quantity < '([0-9-]+)' + '10' and p_size >= '([0-9-]+)' and p_size < '([0-9-]+)')",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_quantity", ">=", "'$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_quantity", "<", "'$2'"]
+          },
+          {
+            "type": "expr",
+            "children": ["p_size", ">=", "'$3'"]
+          },
+          {
+            "type": "expr",
+            "children": ["p_size", "<", "'$4'"]
+          }
+        ]
+      }
+    },
+    "20": {
+      "regex": "l_shipdate >= date '([0-9-]+)' and l_shipdate < date '([0-9-]+)' \\+ interval '1' year",
+      "predicate": {
+        "type": "and",
+        "children": [
+          {
+            "type": "expr",
+            "children": ["l_shipdate", ">=", "date '$1'"]
+          },
+          {
+            "type": "expr",
+            "children": ["l_shipdate", "<", "date '$2' + interval '1' year"]
           }
         ]
       }
